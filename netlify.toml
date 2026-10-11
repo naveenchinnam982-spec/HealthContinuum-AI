@@ -1,9 +1,16 @@
-# Netlify Root Configuration for HealthContinuum AI
+# Netlify configuration for HealthContinuum AI
 [build]
   base = "doctorsdashboard-main"
-  command = "npm run build"
+  command = "npm run build && mkdir -p dist/patient && cp -R ../maruthi/Health/. dist/patient/"
   publish = "dist"
 
+# Keep the submitted hackathon URL, but serve the patient app.
+[[redirects]]
+  from = "/doctor/login"
+  to = "/patient/index.html"
+  status = 200
+
+# Existing doctor login remains available at /login.
 [[redirects]]
   from = "/*"
   to = "/index.html"
