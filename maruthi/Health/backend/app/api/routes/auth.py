@@ -54,199 +54,64 @@ class AuthResponse(BaseModel):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(
-    payload: LoginRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    identifier = payload.identifier.strip()
-    if not identifier:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "EMPTY_IDENTIFIER", "message": "Email or mobile number is required."},
-        )
-
-    # Search for matching patient by email, phone, UHID, or ID
-    stmt = select(Patient).where(
-        or_(
-            Patient.email.ilike(identifier),
-            Patient.phone == identifier,
-            Patient.uhid.ilike(identifier),
-            Patient.id == identifier,
-        )
-    )
-    result = await db.execute(stmt)
-    patient = result.scalars().first()
-
-    # If not found directly in database
-    if not patient:
-        # Check if explicitly requesting demo patient
-        if identifier.lower() in ("pat-ramesh-001", "hc-2024-00847", "ramesh", "ramesh.kumar@synthetic.example"):
-            demo_stmt = select(Patient).where(Patient.id == "pat-ramesh-001")
-            demo_res = await db.execute(demo_stmt)
-            patient = demo_res.scalars().first()
-        else:
-            # Auto-create new personalized patient account for this new email / user
-            new_id = f"pat-{uuid.uuid4().hex[:8]}"
-            new_uhid = f"HC-{uuid.uuid4().hex[:6].upper()}"
-            name_part = (
-                identifier.split("@")[0].replace(".", " ").replace("_", " ").title()
-                if "@" in identifier
-                else f"Patient {identifier[-4:] if len(identifier) >= 4 else identifier}"
-            )
-            patient = Patient(
-                id=new_id,
-                name=name_part,
-                email=identifier if "@" in identifier else None,
-                phone=identifier if "@" not in identifier else None,
-                uhid=new_uhid,
-            )
-            db.add(patient)
-            await db.commit()
-            await db.refresh(patient)
-
-    token_data = {
-        "sub": patient.id,
-        "name": patient.name,
-        "email": patient.email,
-        "uhid": patient.uhid,
-    }
-    access_token = create_access_token(token_data)
-
-    patient_dict = {
-        "id": patient.id,
-        "name": patient.name,
-        "email": patient.email,
-        "phone": patient.phone,
-        "uhid": patient.uhid,
-        "blood_group": patient.blood_group,
-        "gender": patient.gender,
-        "date_of_birth": patient.date_of_birth,
-    }
-
-    return AuthResponse(
-        success=True,
-        data=AuthData(
-            access_token=access_token,
-            token_type="bearer",
-            patient=patient_dict,
-        ),
-        message=f"Welcome back, {patient.name}!",
+async def login(payload: LoginRequest):
+    """Legacy passwordless login is disabled; use Firebase Authentication in the patient client."""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail={
+            "code": "FIREBASE_AUTH_REQUIRED",
+            "message": "Patient sign-in must be verified through Firebase Authentication. The legacy API did not verify patient passwords and is disabled.",
+        },
     )
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def register(
-    payload: RegisterRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    patient_id = f"pat-{uuid.uuid4().hex[:8]}"
-    uhid = f"HC-{uuid.uuid4().hex[:6].upper()}"
-
-    new_patient = Patient(
-        id=patient_id,
-        name=payload.name,
-        email=payload.email,
-        phone=payload.phone,
-        uhid=uhid,
-    )
-    db.add(new_patient)
-    await db.commit()
-    await db.refresh(new_patient)
-
-    access_token = create_access_token({"sub": new_patient.id, "name": new_patient.name})
-
-    patient_dict = {
-        "id": new_patient.id,
-        "name": new_patient.name,
-        "email": new_patient.email,
-        "phone": new_patient.phone,
-        "uhid": new_patient.uhid,
-    }
-
-    return AuthResponse(
-        success=True,
-        data=AuthData(
-            access_token=access_token,
-            token_type="bearer",
-            patient=patient_dict,
-        ),
-        message=f"Account created successfully for {new_patient.name}.",
+async def register(payload: RegisterRequest):
+    """Legacy API registration is disabled; it did not store/verify patient credentials."""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail={
+            "code": "FIREBASE_AUTH_REQUIRED",
+            "message": "Create patient accounts through Firebase Authentication. The legacy API registration endpoint is disabled.",
+        },
     )
 
 
 @router.post("/google", response_model=AuthResponse)
-async def google_auth(
-    payload: GoogleAuthRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    stmt = select(Patient).where(Patient.email.ilike(payload.email))
-    result = await db.execute(stmt)
-    patient = result.scalars().first()
-
-    if not patient:
-        if payload.email.lower() == "ramesh.kumar@synthetic.example":
-            demo_stmt = select(Patient).where(Patient.id == "pat-ramesh-001")
-            demo_res = await db.execute(demo_stmt)
-            patient = demo_res.scalars().first()
-        else:
-            new_id = f"pat-{uuid.uuid4().hex[:8]}"
-            new_uhid = f"HC-{uuid.uuid4().hex[:6].upper()}"
-            patient = Patient(
-                id=new_id,
-                name=payload.name or payload.email.split("@")[0].title(),
-                email=payload.email,
-                uhid=new_uhid,
-            )
-            db.add(patient)
-            await db.commit()
-            await db.refresh(patient)
-
-    access_token = create_access_token({"sub": patient.id, "name": patient.name, "email": patient.email})
-
-    patient_dict = {
-        "id": patient.id,
-        "name": patient.name,
-        "email": patient.email,
-        "phone": patient.phone,
-        "uhid": patient.uhid,
-    }
-
-    return AuthResponse(
-        success=True,
-        data=AuthData(
-            access_token=access_token,
-            token_type="bearer",
-            patient=patient_dict,
-        ),
-        message=f"Signed in as {patient.name}",
+async def google_auth(payload: GoogleAuthRequest):
+    """Never trust a client-supplied email as proof of Google authentication."""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail={
+            "code": "VERIFIED_ID_TOKEN_REQUIRED",
+            "message": "Google sign-in must be verified by Firebase Authentication. The legacy email-only endpoint is disabled.",
+        },
     )
 
 
 @router.get("/me", response_model=AuthResponse)
 async def get_current_user(
-    token: str | None = None,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    if not token:
-        # Return default patient
-        stmt = select(Patient).where(Patient.id == "pat-ramesh-001")
-        res = await db.execute(stmt)
-        patient = res.scalars().first()
-    else:
-        payload = decode_access_token(token)
-        if not payload or "sub" not in payload:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        stmt = select(Patient).where(Patient.id == payload["sub"])
-        res = await db.execute(stmt)
-        patient = res.scalars().first()
+    """Return a patient only when a signed bearer token is supplied."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token required.")
 
+    payload = decode_access_token(auth_header[7:].strip())
+    if not payload or not payload.get("sub") or payload.get("role") == "doctor":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid patient session.")
+
+    result = await db.execute(select(Patient).where(Patient.id == payload["sub"]))
+    patient = result.scalar_one_or_none()
     if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Patient session is not valid.")
 
     return AuthResponse(
         success=True,
         data=AuthData(
-            access_token=token or "",
+            access_token=auth_header[7:].strip(),
             token_type="bearer",
             patient={
                 "id": patient.id,
