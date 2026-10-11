@@ -43,34 +43,29 @@ async def get_doctor_from_request(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> Doctor:
-    """Extract authenticated doctor from JWT Bearer token or return default verified doctor."""
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header[7:].strip()
-        payload = decode_access_token(token)
-        if payload and payload.get("role") == "doctor" and "sub" in payload:
-            stmt = select(Doctor).where(Doctor.id == payload["sub"])
-            res = await db.execute(stmt)
-            doc = res.scalar_one_or_none()
-            if doc and doc.is_active:
-                return doc
-
-    # Default fallback: seeded doctor Dr. Ananya Sharma
-    stmt = select(Doctor).where(Doctor.email == "ananya.sharma@continuumhealth.in")
-    res = await db.execute(stmt)
-    doc = res.scalar_one_or_none()
-    if not doc:
-        # Create or fetch any active doctor
-        stmt2 = select(Doctor).limit(1)
-        res2 = await db.execute(stmt2)
-        doc = res2.scalar_one_or_none()
-
-    if not doc:
+    """Return only an explicitly authenticated, active doctor; never assume a default doctor."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "DOCTOR_AUTH_REQUIRED", "message": "Doctor authentication required."},
         )
-    return doc
+
+    payload = decode_access_token(auth_header[7:].strip())
+    if not payload or payload.get("role") != "doctor" or not payload.get("sub"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "INVALID_DOCTOR_SESSION", "message": "Valid doctor session required."},
+        )
+
+    result = await db.execute(select(Doctor).where(Doctor.id == payload["sub"]))
+    doctor = result.scalar_one_or_none()
+    if not doctor or not doctor.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "DOCTOR_NOT_ACTIVE", "message": "Doctor account is not active."},
+        )
+    return doctor
 
 
 @router.post(
