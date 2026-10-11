@@ -1,14 +1,38 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Patient documents storage: only authenticated users can upload or read
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsPatient(patientId) {
+      return signedIn() && (
+        request.auth.uid == patientId ||
+        ('patientId' in request.auth.token &&
+          request.auth.token.patientId == patientId)
+      );
+    }
+
     match /patients/{patientId}/documents/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null 
-                    && request.resource.size < 25 * 1024 * 1024 // 25 MB max
-                    && (request.resource.contentType.matches('application/pdf')
-                        || request.resource.contentType.matches('image/.*'));
+      allow read: if ownsPatient(patientId);
+
+      // Separate delete from create/update: request.resource is null on delete.
+      allow create, update: if ownsPatient(patientId)
+        && request.resource != null
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType in [
+          'application/pdf',
+          'image/jpeg',
+          'image/png',
+          'image/webp'
+        ];
+
+      allow delete: if ownsPatient(patientId);
+    }
+
+    // Private by default: all other storage paths are denied.
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
