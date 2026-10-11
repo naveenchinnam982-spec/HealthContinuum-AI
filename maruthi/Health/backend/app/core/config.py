@@ -7,6 +7,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import List
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -51,6 +52,18 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        """Fail closed when unsafe development defaults are used in production."""
+        if self.app_env.strip().lower() in {"prod", "production"}:
+            if self.debug:
+                raise ValueError("DEBUG must be false in production")
+            if self.jwt_secret_key == "CHANGE_ME" or len(self.jwt_secret_key) < 32:
+                raise ValueError("JWT_SECRET_KEY must be a unique secret of at least 32 characters in production")
+            if "*" in self.cors_origins:
+                raise ValueError("Wildcard CORS origins are not allowed in production")
+        return self
 
 
 @lru_cache
