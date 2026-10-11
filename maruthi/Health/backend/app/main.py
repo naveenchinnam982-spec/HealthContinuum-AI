@@ -34,6 +34,17 @@ logger = logging.getLogger("healthcontinuum")
 
 settings = get_settings()
 
+# SECURITY HOLD: this API contains demo/legacy data routes that do not yet enforce
+# verified identity plus patient-level authorization on every endpoint. Keep the
+# static patient frontend separate and refuse production API startup until those
+# controls are implemented and tested.
+if settings.app_env.strip().lower() == "production":
+    raise RuntimeError(
+        "HealthContinuum AI backend is not production-safe yet. Startup is blocked "
+        "until all patient-data routes enforce verified identity and patient ownership, "
+        "and doctor grants are server-authorized. Use the backend only for local demo/testing."
+    )
+
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
 @asynccontextmanager
@@ -54,20 +65,39 @@ app = FastAPI(
         "Backend API for the patient-facing health continuity platform."
     ),
     version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
+    docs_url="/api/docs" if settings.app_env.strip().lower() != "production" else None,
+    redoc_url="/api/redoc" if settings.app_env.strip().lower() != "production" else None,
+    openapi_url="/api/openapi.json" if settings.app_env.strip().lower() != "production" else None,
     lifespan=lifespan,
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins + ["*"],   # "*" for local file:// dev
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+
+@app.middleware("http")
+async def restrict_demo_api_to_loopback(request: Request, call_next):
+    """Development backend is for local demos only, never a LAN/public API."""
+    if request.url.path.startswith("/api/"):
+        client_host = request.client.host if request.client else None
+        if client_host not in {"127.0.0.1", "::1", "localhost", "testclient"}:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "success": False,
+                    "error": {
+                        "code": "LOCAL_DEMO_ONLY",
+                        "message": "The demo backend only accepts local requests.",
+                    },
+                },
+            )
+    return await call_next(request)
 
 # ── Global exception handler ──────────────────────────────────────────────────
 @app.exception_handler(Exception)
