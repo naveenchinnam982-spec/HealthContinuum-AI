@@ -1,14 +1,32 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Patient documents storage: only authenticated users can upload or read
+    // A signed-in user may access only their own patient-document directory.
+    // Use a full Firebase UID-based patient ID or an explicitly assigned claim.
+    function isPatientOwner(patientId) {
+      return request.auth != null
+        && (
+          request.auth.uid == patientId
+          || patientId == 'pat-' + request.auth.uid
+          || request.auth.token.patientId == patientId
+        );
+    }
+
     match /patients/{patientId}/documents/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null 
-                    && request.resource.size < 25 * 1024 * 1024 // 25 MB max
-                    && (request.resource.contentType.matches('application/pdf')
-                        || request.resource.contentType.matches('image/.*'));
+      allow read: if isPatientOwner(patientId);
+      allow create, update: if isPatientOwner(patientId)
+        && request.resource != null
+        && request.resource.size < 25 * 1024 * 1024
+        && (
+          request.resource.contentType == 'application/pdf'
+          || request.resource.contentType.matches('image/.*')
+        );
+      allow delete: if isPatientOwner(patientId);
+    }
+
+    // Deny all other storage paths unless explicitly configured later.
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
