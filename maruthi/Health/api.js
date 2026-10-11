@@ -69,131 +69,94 @@ const API = {
 
   /** POST /auth/login */
   login: async (identifier, password = '', rememberMe = true) => {
-    const res = await apiFetch('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ identifier, password, remember_me: rememberMe }),
-    });
-    if (res?.success && res.data?.patient?.id) {
-      setActivePatientId(res.data.patient.id);
-      return res;
+    const normalizedIdentifier = String(identifier || '').trim();
+    if (!normalizedIdentifier.includes('@')) {
+      throw new Error('For secure sign-in, use the email registered to your patient account. Use Quick Demo to explore synthetic sample data.');
+    }
+    if (!isFirebaseActive() || !window.FirebaseService) {
+      throw new Error('Secure sign-in is unavailable because Firebase Authentication is not configured.');
     }
 
-    const isRamesh = identifier.toLowerCase().includes('ramesh') || identifier === 'HC-2024-00847';
-    const newId = isRamesh ? 'pat-ramesh-001' : 'pat-' + Math.random().toString(36).substring(2, 9);
-    const newUhid = isRamesh ? 'HC-2024-00847' : 'HC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    const newName = isRamesh ? 'Ramesh Kumar' : (identifier.includes('@') ? identifier.split('@')[0].replace('.', ' ').replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) : `Patient ${identifier.slice(-4)}`);
-
-    if (isFirebaseActive() && window.FirebaseService && identifier.includes('@')) {
-      try {
-        const userCred = await window.FirebaseService.signIn(identifier, password || 'password123');
-        const userPatientId = userCred.user?.uid ? `pat-${userCred.user.uid.substring(0, 8)}` : newId;
-        setActivePatientId(userPatientId);
-        return {
-          success: true,
-          data: {
-            access_token: 'fb-token-' + (userCred.user?.uid || 'user'),
-            patient: {
-              id: userPatientId,
-              name: userCred.user?.displayName || newName,
-              email: userCred.user?.email || identifier,
-              uhid: newUhid,
-            },
+    try {
+      const userCred = await window.FirebaseService.signIn(normalizedIdentifier, password);
+      const user = userCred.user;
+      if (!user || !user.uid || !user.email) throw new Error('Verified patient identity missing.');
+      const idToken = await user.getIdToken();
+      setActivePatientId(user.uid);
+      return {
+        success: true,
+        data: {
+          access_token: idToken,
+          authProvider: 'firebase',
+          patient: {
+            id: user.uid,
+            name: user.displayName || user.email.split('@')[0],
+            email: user.email,
+            uhid: '',
           },
-          message: 'Signed in successfully via Firebase',
-        };
-      } catch (fbErr) {
-        console.warn('[Firebase Auth fallback]:', fbErr);
-      }
-    }
-
-    setActivePatientId(newId);
-    return {
-      success: true,
-      data: {
-        access_token: 'local-token-' + newId,
-        patient: {
-          id: newId,
-          name: newName,
-          email: identifier.includes('@') ? identifier : `${newId}@example.com`,
-          phone: !identifier.includes('@') ? identifier : '+91 98765 43210',
-          uhid: newUhid,
         },
-      },
-      message: 'Signed in successfully',
-    };
+        message: 'Signed in successfully via Firebase Authentication',
+      };
+    } catch (err) {
+      console.warn('[Firebase Auth] Patient sign-in failed:', err);
+      throw new Error('Sign-in failed. Check your registered email and passcode, then try again.');
+    }
   },
 
   /** POST /auth/register */
   register: async (name, email = '', phone = '', password = 'password123') => {
-    const res = await apiFetch('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ name, email, phone, password }),
-    });
-    if (res?.success && res.data?.patient?.id) {
-      setActivePatientId(res.data.patient.id);
-      return res;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!normalizedEmail) throw new Error('A verified email address is required to create a patient account.');
+    if (!isFirebaseActive() || !window.FirebaseService) {
+      throw new Error('Secure registration is unavailable because Firebase Authentication is not configured.');
     }
 
-    const newId = 'pat-' + Math.random().toString(36).substring(2, 9);
-    const newUhid = 'HC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-
-    if (isFirebaseActive() && window.FirebaseService && email) {
-      try {
-        const userCred = await window.FirebaseService.signUp(email, password, name);
-        const fbId = userCred.user?.uid ? `pat-${userCred.user.uid.substring(0, 8)}` : newId;
-        setActivePatientId(fbId);
-        return {
-          success: true,
-          data: {
-            access_token: 'fb-token-' + (userCred.user?.uid || 'user'),
-            patient: { id: fbId, name, email, uhid: newUhid },
-          },
-          message: 'Account created with Firebase',
-        };
-      } catch (e) {
-        console.warn('[Firebase SignUp]', e);
-      }
+    try {
+      const userCred = await window.FirebaseService.signUp(normalizedEmail, password, name);
+      const user = userCred.user;
+      if (!user || !user.uid) throw new Error('Verified patient identity missing.');
+      const idToken = await user.getIdToken();
+      setActivePatientId(user.uid);
+      return {
+        success: true,
+        data: {
+          access_token: idToken,
+          authProvider: 'firebase',
+          patient: { id: user.uid, name: user.displayName || name, email: user.email || normalizedEmail, phone, uhid: '' },
+        },
+        message: 'Account created with Firebase Authentication',
+      };
+    } catch (err) {
+      console.warn('[Firebase Auth] Registration failed:', err);
+      throw new Error('Account creation failed. Check the email and passcode requirements, then try again.');
     }
-
-    setActivePatientId(newId);
-    return {
-      success: true,
-      data: {
-        access_token: 'local-token-' + newId,
-        patient: { id: newId, name, email, phone, uhid: newUhid },
-      },
-      message: 'Account created successfully',
-    };
   },
 
   /** POST /auth/google */
   googleAuth: async (email, name, googleId = null) => {
-    const res = await apiFetch('/auth/google', {
-      method: 'POST',
-      body: JSON.stringify({ email, name, google_id: googleId }),
-    });
-    if (res?.success && res.data?.patient?.id) {
-      setActivePatientId(res.data.patient.id);
-      return res;
+    // Called only after Firebase's Google popup succeeds. Never synthesize a login
+    // from a client-supplied email or Google UID.
+    const user = window.FirebaseService?.getCurrentUser?.();
+    if (!isFirebaseActive() || !user || !user.uid || !user.email ||
+        String(user.email).toLowerCase() !== String(email || '').toLowerCase()) {
+      throw new Error('Google sign-in could not be verified. Please try again.');
     }
-
-    const isRamesh = email && email.toLowerCase().includes('ramesh');
-    const newId = isRamesh ? 'pat-ramesh-001' : 'pat-' + Math.random().toString(36).substring(2, 9);
-    const newUhid = isRamesh ? 'HC-2024-00847' : 'HC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    setActivePatientId(newId);
+    const idToken = await user.getIdToken();
+    setActivePatientId(user.uid);
     return {
       success: true,
       data: {
-        access_token: 'google-token-' + newId,
-        patient: { id: newId, name: name || 'Patient User', email, uhid: newUhid },
+        access_token: idToken,
+        authProvider: 'firebase',
+        patient: { id: user.uid, name: user.displayName || name || user.email.split('@')[0], email: user.email, uhid: '' },
       },
-      message: 'Signed in with Google',
+      message: 'Signed in with verified Google identity',
     };
   },
 
   /** GET /auth/me */
   getCurrentUser: async (token) => {
-    return apiFetch(`/auth/me${token ? `?token=${encodeURIComponent(token)}` : ''}`);
+    return apiFetch('/auth/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   },
 
   /** GET /patients/{id} */
