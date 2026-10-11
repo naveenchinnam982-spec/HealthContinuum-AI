@@ -1227,17 +1227,17 @@ function renderLogin() {
         </div>
 
       <!-- Navigation Tabs -->
-      <div class="login-tabs">
-        <button type="button" class="login-tab-btn ${currentAuthTab === 'signin' ? 'active' : ''}" onclick="setAuthTab('signin')">
-          Sign In
+      <nav class="login-tabs" aria-label="Patient access options">
+        <button type="button" class="login-tab-btn ${currentAuthTab === 'signin' ? 'active' : ''}" aria-pressed="${currentAuthTab === 'signin'}" onclick="setAuthTab('signin')">
+          <span class="login-tab-icon" aria-hidden="true">↪</span><span class="login-tab-label">Sign In</span>
         </button>
-        <button type="button" class="login-tab-btn ${currentAuthTab === 'demo' ? 'active' : ''}" onclick="setAuthTab('demo')">
-          ⚡ One-Tap Demo
+        <button type="button" class="login-tab-btn ${currentAuthTab === 'demo' ? 'active' : ''}" aria-pressed="${currentAuthTab === 'demo'}" onclick="setAuthTab('demo')">
+          <span class="login-tab-icon login-tab-icon-demo" aria-hidden="true">⚡</span><span class="login-tab-label">One-Tap Demo</span>
         </button>
-        <button type="button" class="login-tab-btn ${currentAuthTab === 'register' ? 'active' : ''}" onclick="setAuthTab('register')">
-          New Patient
+        <button type="button" class="login-tab-btn ${currentAuthTab === 'register' ? 'active' : ''}" aria-pressed="${currentAuthTab === 'register'}" onclick="setAuthTab('register')">
+          <span class="login-tab-icon" aria-hidden="true">＋</span><span class="login-tab-label">New Patient</span>
         </button>
-      </div>
+      </nav>
 
       <!-- Tab Content Area -->
       <div id="auth-tab-body">
@@ -1357,23 +1357,24 @@ async function handleGoogleLogin() {
 
 async function handleQuickDemoLogin() {
   const btn = document.getElementById('btn-demo-login') || document.getElementById('btn-login-submit');
-  setAuthLoading(btn, true, 'Signing in as Ramesh...');
+  setAuthLoading(btn, true, 'Opening demo…');
 
+  // Demo data is synthetic and must never be treated as an authenticated patient session.
+  // Do not mint a fake token or call the protected patient API as the demo user.
   try {
-    const res = await window.API.login('HC-2024-00847', 'password123', true);
-    if (res?.success && res.data) {
-      await handleAuthSuccess(res.data, true);
-    } else {
-      await handleAuthSuccess({
-        access_token: 'demo-token-001',
-        patient: { id: 'pat-ramesh-001', name: 'Ramesh Kumar', uhid: 'HC-2024-00847', email: 'ramesh.kumar@synthetic.example', phone: '+91 98765 43210' },
-      }, true);
-    }
-  } catch (err) {
     await handleAuthSuccess({
-      access_token: 'demo-token-001',
-      patient: { id: 'pat-ramesh-001', name: 'Ramesh Kumar', uhid: 'HC-2024-00847', email: 'ramesh.kumar@synthetic.example', phone: '+91 98765 43210' },
-    }, true);
+      access_token: '',
+      patient: {
+        id: 'demo-ramesh',
+        name: 'Ramesh Kumar (Demo)',
+        uhid: 'DEMO-ONLY',
+        email: '',
+        phone: '',
+      },
+    }, false);
+  } catch (err) {
+    showAuthError('Unable to open the demo. Please try again.');
+    setAuthLoading(btn, false, 'Open Demo');
   }
 }
 
@@ -1424,8 +1425,12 @@ async function handleAuthSuccess(authData, remember) {
 
   showAuthSuccess(`Welcome, ${STATE.patient.firstName}! Loading dashboard...`);
 
-  // Refresh real backend data
-  await syncWithBackend();
+  // Synthetic demo must remain isolated from real patient APIs.
+  if (authData.patient?.id !== 'demo-ramesh') {
+    await syncWithBackend();
+  } else {
+    STATE.backendConnected = false;
+  }
 
   setTimeout(() => {
     navigate('home');
