@@ -1224,21 +1224,7 @@ function renderLogin() {
           </div>
         </div>
 
-        <div class="backend-status-pill" id="backend-status-indicator" title="Connected to FastAPI & Cloud Firestore">
-          <div class="pulse-dot"></div>
-          <span style="font-size:11px;">${isConnected ? 'Backend Live' : 'Backend Ready'}</span>
         </div>
-      </div>
-
-      <!-- Welcome Heading -->
-      <div style="margin-bottom:20px;">
-        <h1 style="font-size:24px;font-weight:700;letter-spacing:-0.5px;color:var(--text-primary);line-height:1.25;margin:0 0 6px;">
-          Understand what changed.<br/>Know why. Close the gap.
-        </h1>
-        <p style="font-size:13.5px;color:var(--text-secondary);line-height:1.45;margin:0;">
-          Access your unified medical history, prescription transitions, and AI Companion.
-        </p>
-      </div>
 
       <!-- Navigation Tabs -->
       <div class="login-tabs">
@@ -1258,13 +1244,6 @@ function renderLogin() {
         ${tabBodyHtml}
       </div>
 
-      <!-- Security Reassurance -->
-      <div style="margin-top:24px;padding:12px 14px;background:rgba(37,99,235,0.05);border-radius:14px;border:1px solid rgba(37,99,235,0.12);display:flex;gap:10px;align-items:flex-start;">
-        <div style="color:var(--blue);margin-top:1px;">${getIcon('shield', 'width:18px;height:18px;')}</div>
-        <div style="font-size:11.5px;color:var(--text-secondary);line-height:1.45;">
-          <strong style="color:var(--text-primary);">HIPAA & Privacy Assured:</strong> All records are end-to-end encrypted. Doctors receive temporary read-only access strictly upon your approval.
-        </div>
-      </div>
     </div>
   `;
 }
