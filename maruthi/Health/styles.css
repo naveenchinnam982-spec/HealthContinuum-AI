@@ -6421,35 +6421,76 @@ html, body {
    AUTHENTICATION & LOGIN SCREEN ENHANCEMENTS
    =================================================== */
 .login-tabs {
-  display: flex;
-  background: #f1f5f9;
-  padding: 4px;
-  border-radius: 14px;
-  margin-bottom: 18px;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  background: #eaf0f8;
+  padding: 5px;
+  border: 1px solid #e0e7f1;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  gap: 5px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .login-tab-btn {
-  flex: 1;
-  padding: 8px 10px;
-  font-size: 12.5px;
-  font-weight: 600;
-  border-radius: 10px;
-  border: none;
+  min-width: 0;
+  min-height: 58px;
+  padding: 9px 5px;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 650;
+  border-radius: 12px;
+  border: 1px solid transparent;
   background: transparent;
-  color: #64748b;
+  color: #53627a;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.login-tab-label { display: block; }
+
+.login-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 21px;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 7px;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.09);
+}
+
+.login-tab-icon-demo {
+  color: #b77908;
+  background: #fff3c4;
 }
 
 .login-tab-btn.active {
   background: #ffffff;
-  color: #0f172a;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  color: #14213d;
+  border-color: #e5ebf4;
+  box-shadow: 0 3px 10px rgba(25, 50, 90, 0.09);
+}
+
+.login-tab-btn:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}
+
+@media (max-width: 360px) {
+  .login-tab-btn { font-size: 11px; padding-inline: 3px; }
+  .login-tab-btn { min-height: 54px; }
 }
 
 .btn-google {
