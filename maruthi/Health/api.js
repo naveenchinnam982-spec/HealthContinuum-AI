@@ -78,48 +78,34 @@ const API = {
       return res;
     }
 
-    const isRamesh = identifier.toLowerCase().includes('ramesh') || identifier === 'HC-2024-00847';
-    const newId = isRamesh ? 'pat-ramesh-001' : 'pat-' + Math.random().toString(36).substring(2, 9);
-    const newUhid = isRamesh ? 'HC-2024-00847' : 'HC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    const newName = isRamesh ? 'Ramesh Kumar' : (identifier.includes('@') ? identifier.split('@')[0].replace('.', ' ').replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) : `Patient ${identifier.slice(-4)}`);
-
     if (isFirebaseActive() && window.FirebaseService && identifier.includes('@')) {
       try {
-        const userCred = await window.FirebaseService.signIn(identifier, password || 'password123');
-        const userPatientId = userCred.user?.uid ? `pat-${userCred.user.uid.substring(0, 8)}` : newId;
+        const userCred = await window.FirebaseService.signIn(identifier, password);
+        const uid = userCred.user?.uid;
+        if (!uid) throw new Error('Firebase did not return a verified user ID');
+        const userPatientId = `pat-${uid}`;
         setActivePatientId(userPatientId);
         return {
           success: true,
           data: {
-            access_token: 'fb-token-' + (userCred.user?.uid || 'user'),
+            access_token: await userCred.user.getIdToken(),
             patient: {
               id: userPatientId,
-              name: userCred.user?.displayName || newName,
+              name: userCred.user?.displayName || identifier.split('@')[0],
               email: userCred.user?.email || identifier,
-              uhid: newUhid,
             },
           },
           message: 'Signed in successfully via Firebase',
         };
       } catch (fbErr) {
-        console.warn('[Firebase Auth fallback]:', fbErr);
+        console.warn('[Firebase sign-in failed]:', fbErr);
       }
     }
 
-    setActivePatientId(newId);
     return {
-      success: true,
-      data: {
-        access_token: 'local-token-' + newId,
-        patient: {
-          id: newId,
-          name: newName,
-          email: identifier.includes('@') ? identifier : `${newId}@example.com`,
-          phone: !identifier.includes('@') ? identifier : '+91 98765 43210',
-          uhid: newUhid,
-        },
-      },
-      message: 'Signed in successfully',
+      success: false,
+      error: res?.error || { code: 'AUTHENTICATION_UNAVAILABLE', message: 'Sign-in failed. Check your credentials and connection, then try again.' },
+      message: res?.message || 'Sign-in failed. No demo or local account was created.',
     };
   },
 
@@ -134,35 +120,30 @@ const API = {
       return res;
     }
 
-    const newId = 'pat-' + Math.random().toString(36).substring(2, 9);
-    const newUhid = 'HC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-
     if (isFirebaseActive() && window.FirebaseService && email) {
       try {
         const userCred = await window.FirebaseService.signUp(email, password, name);
-        const fbId = userCred.user?.uid ? `pat-${userCred.user.uid.substring(0, 8)}` : newId;
-        setActivePatientId(fbId);
+        const uid = userCred.user?.uid;
+        if (!uid) throw new Error('Firebase did not return a verified user ID');
+        const patientId = `pat-${uid}`;
+        setActivePatientId(patientId);
         return {
           success: true,
           data: {
-            access_token: 'fb-token-' + (userCred.user?.uid || 'user'),
-            patient: { id: fbId, name, email, uhid: newUhid },
+            access_token: await userCred.user.getIdToken(),
+            patient: { id: patientId, name, email },
           },
           message: 'Account created with Firebase',
         };
       } catch (e) {
-        console.warn('[Firebase SignUp]', e);
+        console.warn('[Firebase sign-up failed]:', e);
       }
     }
 
-    setActivePatientId(newId);
     return {
-      success: true,
-      data: {
-        access_token: 'local-token-' + newId,
-        patient: { id: newId, name, email, phone, uhid: newUhid },
-      },
-      message: 'Account created successfully',
+      success: false,
+      error: res?.error || { code: 'REGISTRATION_UNAVAILABLE', message: 'Registration failed. Check your connection and try again.' },
+      message: res?.message || 'Registration failed. No local-only account was created.',
     };
   },
 
@@ -177,17 +158,10 @@ const API = {
       return res;
     }
 
-    const isRamesh = email && email.toLowerCase().includes('ramesh');
-    const newId = isRamesh ? 'pat-ramesh-001' : 'pat-' + Math.random().toString(36).substring(2, 9);
-    const newUhid = isRamesh ? 'HC-2024-00847' : 'HC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    setActivePatientId(newId);
     return {
-      success: true,
-      data: {
-        access_token: 'google-token-' + newId,
-        patient: { id: newId, name: name || 'Patient User', email, uhid: newUhid },
-      },
-      message: 'Signed in with Google',
+      success: false,
+      error: res?.error || { code: 'GOOGLE_AUTH_UNAVAILABLE', message: 'Google sign-in could not be verified. Please try again.' },
+      message: res?.message || 'Google sign-in failed. No local-only account was created.',
     };
   },
 
