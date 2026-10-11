@@ -21,14 +21,14 @@ import type { JSX } from 'react';
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { doctor, loading } = useAuth();
   if (loading) return <LoadingState message="Verifying session..." />;
-  if (!doctor) return <Navigate to="/doctor/login" replace />;
+  if (!doctor) return <Navigate to="/login" replace />;
   return <AppShell>{children}</AppShell>;
 }
 
 function LoginRoute({ children }: { children: JSX.Element }) {
   const { doctor, loading } = useAuth();
   if (loading) return <LoadingState message="Loading..." />;
-  if (doctor) return <Navigate to="/doctor/overview" replace />;
+  if (doctor) return <Navigate to="/overview" replace />;
   return children;
 }
 
@@ -37,8 +37,7 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Dedicated /doctor routes (FastAPI & standard path) */}
-          <Route path="/doctor/login" element={<LoginRoute><LoginPage /></LoginRoute>} />
+          {/* Doctor dashboard routes. /doctor/login is reserved for the patient hackathon URL. */}
           <Route path="/doctor/overview" element={<ProtectedRoute><OverviewPage /></ProtectedRoute>} />
           <Route path="/doctor/patients" element={<ProtectedRoute><PatientsPage /></ProtectedRoute>} />
           <Route path="/doctor/patients/:patientId" element={<ProtectedRoute><PatientDetailPage /></ProtectedRoute>} />
@@ -49,7 +48,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/doctor/audit-history" element={<ProtectedRoute><AuditHistoryPage /></ProtectedRoute>} />
           <Route path="/doctor/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 
-          {/* Standalone Netlify root route aliases */}
+          {/* Doctor login remains available at /login. */}
           <Route path="/login" element={<LoginRoute><LoginPage /></LoginRoute>} />
           <Route path="/overview" element={<ProtectedRoute><OverviewPage /></ProtectedRoute>} />
           <Route path="/patients" element={<ProtectedRoute><PatientsPage /></ProtectedRoute>} />
@@ -61,8 +60,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/audit-history" element={<ProtectedRoute><AuditHistoryPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 
-          <Route path="/" element={<Navigate to="/doctor/login" replace />} />
-          <Route path="*" element={<Navigate to="/doctor/login" replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
