@@ -1,63 +1,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if the user is authenticated
-    function isAuthenticated() {
+    function signedIn() {
       return request.auth != null;
     }
-    
-    // Helper function to check if the user owns this patient record
-    function isPatientOwner(patientId) {
-      return isAuthenticated() && (request.auth.uid == patientId || request.auth.token.patientId == patientId);
-    }
-    
-    // Helper function to validate doctor access code grants
-    function hasDoctorAccessGrant(patientId) {
-      return isAuthenticated() && exists(/databases/$(database)/documents/access_grants/$(request.auth.token.grantId));
+
+    // Patient documents are keyed by the authenticated Firebase UID.
+    // The optional patientId claim supports a future server-issued mapping.
+    function ownsPatient(patientId) {
+      return signedIn() && (
+        request.auth.uid == patientId ||
+        ('patientId' in request.auth.token &&
+          request.auth.token.patientId == patientId)
+      );
     }
 
-    // ── Patients Collection ──
     match /patients/{patientId} {
-      // Patient profile readable by owner, approved doctors, or demo/authenticated users
-      allow read: if isAuthenticated() || isPatientOwner(patientId);
-      allow write: if isPatientOwner(patientId) || (isAuthenticated() && request.resource.data.keys().hasAll(['name']));
-      
-      // ── Sub-collections: visits, medications, labs, documents, decisions ──
-      match /visits/{visitId} {
-        allow read: if isAuthenticated() || isPatientOwner(patientId);
-        allow create, update: if isAuthenticated();
-        allow delete: if isPatientOwner(patientId);
-      }
-      
-      match /medications/{medicationId} {
-        allow read: if isAuthenticated() || isPatientOwner(patientId);
-        allow write: if isAuthenticated();
-      }
-      
-      match /labs/{labId} {
-        allow read: if isAuthenticated() || isPatientOwner(patientId);
-        allow write: if isAuthenticated();
-      }
-      
-      match /documents/{docId} {
-        allow read: if isAuthenticated() || isPatientOwner(patientId);
-        allow create, update: if isAuthenticated();
-        allow delete: if isPatientOwner(patientId);
-      }
-      
-      match /decisions/{decisionId} {
-        allow read: if isAuthenticated() || isPatientOwner(patientId);
-        allow write: if isAuthenticated();
+      allow get, list: if ownsPatient(patientId);
+      allow create, update: if ownsPatient(patientId);
+      allow delete: if false;
+
+      // Clinical subcollections (visits, medications, labs, documents, etc.)
+      // remain private to the owning patient.
+      match /{subcollection}/{document=**} {
+        allow read, create, update: if ownsPatient(patientId);
+        allow delete: if false;
       }
     }
-    
-    // ── Doctor Access Grants ──
+
+    // Do not allow browsers to read, create, or modify doctor access grants.
+    // Grant issuance/redemption must be handled by a server that verifies identity,
+    // patient ownership, scopes, expiry, and doctor authorization.
     match /access_grants/{grantId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if false; // Audit logs are immutable
+      allow read, write: if false;
+    }
+
+    // Deny every collection not explicitly allowed above.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
