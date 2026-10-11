@@ -386,6 +386,7 @@ function loadPatientData(patient = {}) {
   const isRamesh = Boolean(
     patient && (
       patient.id === 'pat-ramesh-001' ||
+      patient.id === 'demo-ramesh' ||
       patient.uhid === 'HC-2024-00847' ||
       (patient.email && patient.email.toLowerCase().includes('ramesh')) ||
       (patient.name && patient.name.toLowerCase().includes('ramesh'))
