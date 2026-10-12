@@ -29,7 +29,7 @@ const navItems: NavItem[] = [
   { to: '/doctor/overview', label: 'Overview', icon: LayoutDashboard },
   { to: '/doctor/patients', label: 'Patients', icon: Users },
   { to: '/doctor/shared-records', label: 'Shared Records', icon: FileText },
-  { to: '/doctor/continuity-review', label: 'Continuity Review', icon: GitCompareArrows },
+  { to: '/doctor/continuity-review', label: 'OCR & Verification', icon: GitCompareArrows },
   { to: '/doctor/follow-ups', label: 'Follow-ups', icon: CalendarCheck },
   { to: '/doctor/access-consent', label: 'Access & Consent', icon: ShieldCheck },
   { to: '/doctor/audit-history', label: 'Audit History', icon: ScrollText },
