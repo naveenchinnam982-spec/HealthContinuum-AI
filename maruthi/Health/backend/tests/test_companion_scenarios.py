@@ -360,3 +360,23 @@ async def test_conversations_api(client: AsyncClient, synthetic_patient: str):
     roles = [m["role"] for m in msgs]
     assert "user" in roles
     assert "assistant" in roles
+
+
+@pytest.mark.asyncio
+async def test_simple_greeting_does_not_return_record_fallback(client: AsyncClient, synthetic_patient: str, monkeypatch):
+    """Greetings should be conversational and should not use the missing-record fallback."""
+    from app.services import companion_service
+
+    async def no_openrouter(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(companion_service, "generate_openrouter_response", no_openrouter)
+    response = await client.post(
+        f"/api/patients/{synthetic_patient}/companion/chat",
+        json={"query": "hello"},
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert "AI Health Assistant" in data["answer"]
+    assert "couldn't find that information" not in data["answer"].lower()
+    assert data["provider"] == "greeting_fallback"
