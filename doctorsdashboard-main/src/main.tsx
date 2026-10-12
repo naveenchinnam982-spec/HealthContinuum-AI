@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { AppShell } from '@/components/AppShell';
 import { LoadingState } from '@/components/ui';
 import { LoginPage } from '@/pages/LoginPage';
-import { OverviewPage } from '@/pages/OverviewPage';
+import { DoctorDashboardV2 } from '@/pages/DoctorDashboardV2';
 import { PatientsPage } from '@/pages/PatientsPage';
 import { PatientDetailPage } from '@/pages/PatientDetailPage';
 import { SharedRecordsPage } from '@/pages/SharedRecordsPage';
@@ -21,14 +21,14 @@ import type { JSX } from 'react';
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { doctor, loading } = useAuth();
   if (loading) return <LoadingState message="Verifying session..." />;
-  if (!doctor) return <Navigate to="/login" replace />;
+  if (!doctor) return <Navigate to="/doctor/login" replace />;
   return <AppShell>{children}</AppShell>;
 }
 
 function LoginRoute({ children }: { children: JSX.Element }) {
   const { doctor, loading } = useAuth();
   if (loading) return <LoadingState message="Loading..." />;
-  if (doctor) return <Navigate to="/overview" replace />;
+  if (doctor) return <Navigate to="/doctor/overview" replace />;
   return children;
 }
 
@@ -37,9 +37,8 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Public doctor sign-in route; all dashboard pages remain protected. */}
           <Route path="/doctor/login" element={<LoginRoute><LoginPage /></LoginRoute>} />
-          <Route path="/doctor/overview" element={<ProtectedRoute><OverviewPage /></ProtectedRoute>} />
+          <Route path="/doctor/overview" element={<ProtectedRoute><DoctorDashboardV2 /></ProtectedRoute>} />
           <Route path="/doctor/patients" element={<ProtectedRoute><PatientsPage /></ProtectedRoute>} />
           <Route path="/doctor/patients/:patientId" element={<ProtectedRoute><PatientDetailPage /></ProtectedRoute>} />
           <Route path="/doctor/shared-records" element={<ProtectedRoute><SharedRecordsPage /></ProtectedRoute>} />
@@ -48,21 +47,17 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/doctor/access-consent" element={<ProtectedRoute><AccessConsentPage /></ProtectedRoute>} />
           <Route path="/doctor/audit-history" element={<ProtectedRoute><AuditHistoryPage /></ProtectedRoute>} />
           <Route path="/doctor/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-
-          {/* Doctor login remains available at /login. */}
-          <Route path="/login" element={<LoginRoute><LoginPage /></LoginRoute>} />
-          <Route path="/overview" element={<ProtectedRoute><OverviewPage /></ProtectedRoute>} />
-          <Route path="/patients" element={<ProtectedRoute><PatientsPage /></ProtectedRoute>} />
-          <Route path="/patients/:patientId" element={<ProtectedRoute><PatientDetailPage /></ProtectedRoute>} />
-          <Route path="/shared-records" element={<ProtectedRoute><SharedRecordsPage /></ProtectedRoute>} />
-          <Route path="/continuity-review" element={<ProtectedRoute><ContinuityReviewPage /></ProtectedRoute>} />
-          <Route path="/follow-ups" element={<ProtectedRoute><FollowUpsPage /></ProtectedRoute>} />
-          <Route path="/access-consent" element={<ProtectedRoute><AccessConsentPage /></ProtectedRoute>} />
-          <Route path="/audit-history" element={<ProtectedRoute><AuditHistoryPage /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<Navigate to="/doctor/login" replace />} />
+          <Route path="/overview" element={<Navigate to="/doctor/overview" replace />} />
+          <Route path="/patients" element={<Navigate to="/doctor/patients" replace />} />
+          <Route path="/shared-records" element={<Navigate to="/doctor/shared-records" replace />} />
+          <Route path="/continuity-review" element={<Navigate to="/doctor/continuity-review" replace />} />
+          <Route path="/follow-ups" element={<Navigate to="/doctor/follow-ups" replace />} />
+          <Route path="/access-consent" element={<Navigate to="/doctor/access-consent" replace />} />
+          <Route path="/audit-history" element={<Navigate to="/doctor/audit-history" replace />} />
+          <Route path="/settings" element={<Navigate to="/doctor/settings" replace />} />
+          <Route path="/" element={<Navigate to="/doctor/login" replace />} />
+          <Route path="*" element={<Navigate to="/doctor/login" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
