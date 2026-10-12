@@ -447,4 +447,5 @@ window.API = API;
 window.PATIENT_ID = CURRENT_PATIENT_ID;
 window.checkBackend = checkBackend;
 window.isBackendAvailable = () => backendAvailable;
-window.isFirebaseActive = isFirebaseActive;\nwindow.isSupabaseActive = isSupabaseActive;
+window.isFirebaseActive = isFirebaseActive;
+window.isSupabaseActive = isSupabaseActive;
