@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: healthcontinuum-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./maruthi/Health/backend/Dockerfile
+    dockerContext: ./maruthi/Health/backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://spydy.netlify.app
+      - key: STORAGE_LOCAL_PATH
+        value: /tmp/healthcontinuum-uploads
