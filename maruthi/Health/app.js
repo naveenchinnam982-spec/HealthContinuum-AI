@@ -1341,7 +1341,7 @@ async function handleGoogleLogin() {
   }
 }
 
-async async function handleQuickDemoLogin() {
+async function handleQuickDemoLogin() {
   const btn = document.getElementById('btn-demo-login') || document.getElementById('btn-login-submit');
   setAuthLoading(btn, true, 'Opening demo…');
 
