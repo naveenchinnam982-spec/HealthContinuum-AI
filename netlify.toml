@@ -1,7 +1,7 @@
 # Patient-only Netlify deployment. The FastAPI service is deployed separately (Render).
 [build]
   base = "."
-  command = "mkdir -p dist/patient && cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/ && cp -R maruthi/Health/assets dist/patient/ && printf 'window.HC_API_BASE_URL = \"%s\";\\n' \"$HC_API_BASE_URL\" > dist/patient/api-config.js"
+  command = "mkdir -p dist/patient && cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/ && cp -R maruthi/Health/assets dist/patient/ && echo \"window.HC_API_BASE_URL = '$HC_API_BASE_URL';\" > dist/patient/api-config.js"
   publish = "dist"
 
 [[redirects]]
