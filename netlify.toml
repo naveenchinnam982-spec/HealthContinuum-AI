@@ -1,24 +1,24 @@
-# Patient application and the new doctor dashboard are both built from maruthi/.
-# doctorsdashboard-main is intentionally not referenced or modified.
+# Deploy only the patient-first HealthContinuum app from maruthi/Health.
+# Legacy doctor URLs redirect to the patient dashboard. Doctor source files are
+# retained in the repository, but are not included in this site's deployed build.
+# The external doctorsdashboard-main folder is not referenced or modified.
 [build]
   base = "."
-  command = "set -e; rm -rf dist; mkdir -p dist/patient dist/doctor; cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/; cp -R maruthi/Health/assets dist/patient/; cp maruthi/doctor-dashboard/index.html maruthi/doctor-dashboard/styles.css maruthi/doctor-dashboard/app.js dist/doctor/; echo \"window.HC_API_BASE_URL = '$HC_API_BASE_URL';\" > dist/patient/api-config.js; echo \"window.HC_API_BASE_URL = '$HC_API_BASE_URL';\" > dist/doctor/api-config.js"
+  command = "set -e; rm -rf dist; mkdir -p dist/patient; cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/; cp -R maruthi/Health/assets dist/patient/; echo \"window.HC_API_BASE_URL = '$HC_API_BASE_URL';\" > dist/patient/api-config.js"
   publish = "dist"
 
-# Serve the new doctor dashboard from maruthi/doctor-dashboard.
 [[redirects]]
   from = "/doctor/login"
-  to = "/doctor/index.html"
-  status = 200
+  to = "/"
+  status = 302
   force = true
 
 [[redirects]]
   from = "/doctor/*"
-  to = "/doctor/index.html"
-  status = 200
+  to = "/"
+  status = 302
   force = true
 
-# Patient SPA entry point and deep links.
 [[redirects]]
   from = "/"
   to = "/patient/index.html"
