@@ -1887,8 +1887,8 @@ function renderCompanion() {
         </div>
 
         <div class="hc-comp-header-right">
-          <button class="hc-comp-lang-btn" onclick="setLanguage(STATE.lang === 'en' ? 'te' : 'en')" title="Switch Language">
-            ${STATE.lang === 'en' ? 'తెలుగు' : 'EN'}
+          <button class="hc-comp-lang-btn" onclick="setLanguage(STATE.lang === 'en' ? 'te' : (STATE.lang === 'te' ? 'hi' : 'en'))" title="Switch language: English, Telugu, Hindi">
+            ${STATE.lang === 'en' ? 'తెలుగు' : (STATE.lang === 'te' ? 'हिन्दी' : 'EN')}
           </button>
           <button class="btn-icon hc-comp-user-btn" onclick="openProfileDrawer()" title="Profile" aria-label="Profile">
             ${getIcon('user', 'width:17px;height:17px;stroke:#4b5563;')}
@@ -2418,6 +2418,7 @@ async function handleSendCompanionMessage(questionText) {
   });
 
   STATE.voiceCompanion.state = 'idle';
+  STATE.voiceCompanion.statusMessage = '';
   renderCompanion();
 
   // 6. Speak response aloud if TTS is enabled
@@ -2680,7 +2681,12 @@ function stopListening() {
 }
 
 function speakText(text) {
-  if (!('speechSynthesis' in window)) return;
+  if (!text || !String(text).trim()) return;
+  if (!('speechSynthesis' in window) || typeof window.SpeechSynthesisUtterance !== 'function') {
+    STATE.voiceCompanion.statusMessage = 'Audio playback is not supported in this browser. The answer is still available as text.';
+    renderCompanion();
+    return;
+  }
 
   try {
     window.speechSynthesis.cancel();
@@ -2703,6 +2709,7 @@ function speakText(text) {
       renderCompanion();
     };
 
+    window.speechSynthesis.resume();
     window.speechSynthesis.speak(utterance);
   } catch (err) {
     console.warn('[Voice] TTS speak error:', err);
