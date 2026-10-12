@@ -1,0 +1,45 @@
+name: Backend and AI Companion Tests
+
+on:
+  pull_request:
+    paths:
+      - "maruthi/Health/backend/**"
+      - ".github/workflows/backend-ai-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: maruthi/Health/backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: maruthi/Health/backend/requirements.txt
+
+      - name: Install OCR system dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr
+
+      - name: Install backend dependencies
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt
+
+      - name: Run API tests
+        run: pytest tests/test_api.py -v
+
+      - name: Run AI Companion scenarios
+        run: pytest tests/test_companion_scenarios.py -v
+
+      - name: Run document intelligence tests
+        run: pytest tests/test_document_intelligence.py -v
