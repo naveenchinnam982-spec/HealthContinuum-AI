@@ -1104,7 +1104,7 @@ function renderLogin() {
           </div>
           <div style="position:relative;display:flex;align-items:center;">
             <input class="input-field" type="password" id="login-password" required 
-                   placeholder="Enter your passcode" value="password123" style="padding-right:44px;" />
+                   placeholder="Enter your passcode"  style="padding-right:44px;" />
             <button type="button" class="btn-icon" id="btn-toggle-pwd" onclick="togglePasswordVisibility('login-password', this)" 
                     style="position:absolute;right:8px;color:var(--text-tertiary);padding:6px;font-size:14px;" title="Toggle passcode">
               👁️
@@ -1304,7 +1304,7 @@ async function handleLoginSubmit() {
   const btn = document.getElementById('btn-login-submit');
 
   if (!identifier) {
-    showAuthError('Please enter your Patient UHID, Email, or Mobile Number.');
+    showAuthError('Please enter your Email Address.');
     return;
   }
 
@@ -1341,7 +1341,7 @@ async function handleGoogleLogin() {
   }
 }
 
-async function handleQuickDemoLogin() {
+async async function handleQuickDemoLogin() {
   const btn = document.getElementById('btn-demo-login') || document.getElementById('btn-login-submit');
   setAuthLoading(btn, true, 'Opening demo…');
 
