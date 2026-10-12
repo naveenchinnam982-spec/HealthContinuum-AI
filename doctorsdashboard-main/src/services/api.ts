@@ -50,11 +50,12 @@ import {
 } from './fixtures';
 
 // ─── BACKEND CONFIGURATION ──────────────────────────────────────────────────
-export const API_BASE_URL: string =
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) ||
-  (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')
-    ? `${window.location.origin}/api`
-    : 'http://localhost:8000/api');
+// In production, fail clearly when the Render API URL was not configured at build time.
+// Falling back to the Netlify origin makes API calls return the patient SPA HTML as if it
+// were a successful response, hiding the real configuration problem.
+const configuredApiBaseUrl = String((import.meta as any).env?.VITE_API_BASE_URL || '').trim().replace(/\\/$/, '');
+const isProductionBuild = Boolean((import.meta as any).env?.PROD);
+export const API_BASE_URL: string = configuredApiBaseUrl || (isProductionBuild ? '' : 'http://localhost:8000/api');
 
 export type ServiceMode = 'demo' | 'live';
 export let CURRENT_SERVICE_MODE: ServiceMode = 'live';
@@ -93,6 +94,14 @@ async function backendFetch<T = any>(
   path: string,
   options: RequestInit = {}
 ): Promise<{ success: boolean; data?: T; message?: string; error?: any; status: number }> {
+  if (!API_BASE_URL) {
+    return {
+      success: false,
+      error: { code: 'API_BASE_URL_MISSING', message: 'The backend API URL is not configured for this deployment.' },
+      status: 0,
+    };
+  }
+
   const token = getDoctorToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -204,7 +213,10 @@ export const authService = {
       return { doctor: null, error: errorMsg };
     }
 
-    return { doctor: null, error: 'Cannot connect to backend server. Please verify backend is running on port 8000.' };
+    if (res.error?.code === 'API_BASE_URL_MISSING') {
+      return { doctor: null, error: 'Doctor login is not configured on this deployment. Set the Netlify HC_API_BASE_URL to the public Render backend URL, then redeploy.' };
+    }
+    return { doctor: null, error: 'Cannot reach the doctor authentication API. Check the Render service, API URL, and CORS settings.' };
   },
 
   async signOut(): Promise<void> {
