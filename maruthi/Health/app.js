@@ -1091,7 +1091,7 @@ function renderLogin() {
         <div id="auth-alert" style="display:none;"></div>
 
         <div class="input-group">
-          <label class="input-label" for="login-identifier">Patient UHID, Email, or Mobile</label>
+          <label class="input-label" for="login-identifier">Email Address</label>
           <input class="input-field" type="text" id="login-identifier" required 
                  placeholder="e.g. HC-2024-00847 or ramesh.kumar@synthetic.example" 
                  value="${patientUhid}" />
@@ -1383,7 +1383,7 @@ async function handleRegisterSubmit() {
   const name = document.getElementById('reg-name')?.value.trim();
   const email = document.getElementById('reg-email')?.value.trim();
   const phone = document.getElementById('reg-phone')?.value.trim();
-  const password = document.getElementById('reg-password')?.value || 'password123';
+  const password = document.getElementById('reg-password')?.value || '';
   const btn = document.getElementById('btn-reg-submit');
 
   if (!name) {
@@ -1443,8 +1443,8 @@ async function handleLogout() {
     localStorage.removeItem('hc_auth_user');
     localStorage.removeItem('hc_patient_id');
   } catch (e) {}
-  if (window.FirebaseService) {
-    try { await window.FirebaseService.signOut(); } catch (e) {}
+  if (window.API?.signOut) {
+    try { await window.API.signOut(); } catch (e) {}
   }
   loadPatientData({ id: '', name: '', email: '', uhid: '' });
   closeProfileDrawer();
@@ -5019,26 +5019,38 @@ async function initApp() {
   updateIosClock();
   setInterval(updateIosClock, 10000);
 
-  // Restore existing session if present, otherwise show login
-  let hasSession = false;
-  try {
-    const savedUserJson = localStorage.getItem('hc_auth_user');
-    if (savedUserJson) {
-      const savedUser = JSON.parse(savedUserJson);
-      if (savedUser?.patient) {
-        loadPatientData(savedUser.patient);
-        hasSession = true;
+  // Restore only a valid Supabase session; cached profile data alone is not authentication.
+  (async () => {
+    let hasSession = false;
+    try {
+      if (window.HC_SUPABASE) {
+        const { data: sessionData } = await window.HC_SUPABASE.auth.getSession();
+        const session = sessionData?.session;
+        if (session?.user) {
+          const patient = await (async () => {
+            const { data: profile } = await window.HC_SUPABASE.from('patient_profiles').select('*').eq('id', session.user.id).maybeSingle();
+            return {
+              id: session.user.id,
+              name: profile?.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Patient',
+              email: session.user.email || '',
+              phone: profile?.phone || session.user.user_metadata?.phone || '',
+              uhid: profile?.uhid || '',
+              blood_group: profile?.blood_group || '',
+              dob: profile?.date_of_birth || '',
+              gender: profile?.gender || ''
+            };
+          })();
+          loadPatientData(patient);
+          window.AUTH_TOKEN = session.access_token;
+          try { localStorage.setItem('hc_auth_user', JSON.stringify({ token: session.access_token, patient: STATE.patient, timestamp: Date.now() })); } catch (e) {}
+          hasSession = true;
+        }
       }
+    } catch (e) {
+      console.warn('[Supabase] Session restore failed:', e);
     }
-  } catch (e) {}
-
-  setTimeout(() => {
-    if (hasSession) {
-      navigate('home');
-    } else {
-      navigate('login');
-    }
-  }, 1400);
+    setTimeout(() => navigate(hasSession ? 'home' : 'login'), 300);
+  })();
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
