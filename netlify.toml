@@ -1,17 +1,14 @@
-# Patient-only deployment for HealthContinuum AI.
-# The doctor dashboard source remains in the repository for reference, but it is not built or published.
+# Patient-only Netlify deployment. The FastAPI service is deployed separately (Render).
 [build]
   base = "."
-  command = "mkdir -p dist/patient && cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/ && cp -R maruthi/Health/assets dist/patient/"
+  command = "mkdir -p dist/patient && cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/ && cp -R maruthi/Health/assets dist/patient/ && printf 'window.HC_API_BASE_URL = \"%s\";\\n' \"$HC_API_BASE_URL\" > dist/patient/api-config.js"
   publish = "dist"
 
-# Keep the required hackathon URL and serve the existing patient application.
 [[redirects]]
   from = "/doctor/login"
   to = "/patient/index.html"
   status = 200
 
-# Make the patient application the default page; never serve the doctor dashboard.
 [[redirects]]
   from = "/"
   to = "/patient/index.html"
