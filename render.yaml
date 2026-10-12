@@ -17,3 +17,5 @@ services:
         value: https://spydy.netlify.app
       - key: STORAGE_LOCAL_PATH
         value: /tmp/healthcontinuum-uploads
+      - key: SEED_DEMO_DATA
+        value: "true"
