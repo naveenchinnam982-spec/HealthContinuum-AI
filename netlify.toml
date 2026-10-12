@@ -5,18 +5,19 @@
   command = "set -e; rm -rf dist; mkdir -p dist/patient dist/doctor; cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/; cp -R maruthi/Health/assets dist/patient/; cp maruthi/doctor-dashboard/index.html maruthi/doctor-dashboard/styles.css maruthi/doctor-dashboard/app.js dist/doctor/; echo \"window.HC_API_BASE_URL = '$HC_API_BASE_URL';\" > dist/patient/api-config.js; echo \"window.HC_API_BASE_URL = '$HC_API_BASE_URL';\" > dist/doctor/api-config.js"
   publish = "dist"
 
-# Serve the new doctor dashboard from maruthi/doctor-dashboard.
+# The login URL should open the new doctor app.
 [[redirects]]
   from = "/doctor/login"
   to = "/doctor/index.html"
   status = 200
   force = true
 
+# Non-forced so real CSS, JS and API config files are served as files;
+# unknown doctor routes still fall back to the dashboard HTML.
 [[redirects]]
   from = "/doctor/*"
   to = "/doctor/index.html"
   status = 200
-  force = true
 
 # Patient SPA entry point and deep links.
 [[redirects]]
