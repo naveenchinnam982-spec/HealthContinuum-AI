@@ -1201,7 +1201,7 @@ function renderLogin() {
 
         <div class="input-group">
           <label class="input-label" for="reg-password">Create Passcode</label>
-          <input class="input-field" type="password" id="reg-password" required placeholder="Choose a passcode" value="password123" />
+          <input class="input-field" type="password" id="reg-password" required minlength="8" placeholder="Choose a passcode (8+ characters)" />
         </div>
 
         <button type="submit" class="btn btn-primary btn-full" id="btn-reg-submit" style="height:50px;font-size:15px;font-weight:600;margin-top:4px;">
@@ -1326,32 +1326,17 @@ async function handleLoginSubmit() {
 
 async function handleGoogleLogin() {
   const btn = document.getElementById('btn-google-auth');
-  setAuthLoading(btn, true, 'Connecting Google...');
-
+  setAuthLoading(btn, true, 'Checking Google sign-in...');
   try {
-    if (window.FirebaseService && typeof window.FirebaseService.signInWithGoogle === 'function') {
-      try {
-        const result = await window.FirebaseService.signInWithGoogle();
-        const user = result.user;
-        const res = await window.API.googleAuth(user.email, user.displayName, user.uid);
-        if (res?.success && res.data) {
-          await handleAuthSuccess(res.data, true);
-          return;
-        }
-      } catch (fbErr) {
-        console.warn('Firebase Google Auth popup skipped or unavailable, using fallback:', fbErr);
-      }
-    }
-
-    const res = await window.API.googleAuth('ramesh.kumar@synthetic.example', 'Ramesh Kumar');
-    if (res?.success && res.data) {
-      await handleAuthSuccess(res.data, true);
-    } else {
-      showAuthError('Google sign in could not be completed.');
-      setAuthLoading(btn, false, 'Continue with Google');
-    }
+    if (!window.HC_SUPABASE) throw new Error('Supabase is not initialized.');
+    const { data, error } = await window.HC_SUPABASE.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) throw error;
+    if (!data?.url) throw new Error('Google sign-in is not configured yet. Enable Google under Supabase Authentication → Providers.');
   } catch (err) {
-    showAuthError(err.message || 'Google authentication failed.');
+    showAuthError(err.message || 'Google sign-in is not configured yet.');
     setAuthLoading(btn, false, 'Continue with Google');
   }
 }
