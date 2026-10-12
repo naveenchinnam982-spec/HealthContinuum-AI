@@ -7,12 +7,13 @@
 'use strict';
 
 const API_BASE = (() => {
-  const configured = typeof window !== 'undefined' && typeof window.HC_API_BASE_URL === 'string'
-    ? window.HC_API_BASE_URL.trim().replace(/\\/+$/, '')
+  let configured = typeof window !== 'undefined' && typeof window.HC_API_BASE_URL === 'string'
+    ? window.HC_API_BASE_URL.trim()
     : '';
-  if (configured) return /\\/api$/i.test(configured) ? configured : `${configured}/api`;
+  while (configured.endsWith('/')) configured = configured.slice(0, -1);
+  if (configured) return configured.toLowerCase().endsWith('/api') ? configured : configured + '/api';
   if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) {
-    return `${window.location.origin}/api`;
+    return window.location.origin + '/api';
   }
   return 'http://127.0.0.1:8000/api';
 })();
