@@ -53,7 +53,7 @@ import {
 // In production, fail clearly when the Render API URL was not configured at build time.
 // Falling back to the Netlify origin makes API calls return the patient SPA HTML as if it
 // were a successful response, hiding the real configuration problem.
-const configuredApiBaseUrl = String((import.meta as any).env?.VITE_API_BASE_URL || '').trim().replace(/\\/$/, '');
+const configuredApiBaseUrl = String((import.meta as any).env?.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
 const isProductionBuild = Boolean((import.meta as any).env?.PROD);
 export const API_BASE_URL: string = configuredApiBaseUrl || (isProductionBuild ? '' : 'http://localhost:8000/api');
 
