@@ -64,15 +64,32 @@ INTENT_INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
 # LANGUAGE DETECTION HELPER
 # ══════════════════════════════════════════════════════════════════════════════
 
+ROMAN_TELUGU_MARKERS = re.compile(
+    r"\b(naaku|naku|naa|nenu|meeru|neeku|enti|emiti|enduku|ela|elaa|undi|undhi|"
+    r"unnayi|unnai|cheppu|cheppandi|cheyyali|cheyali|chesanu|chesa|avuthundi|"
+    r"avutundi|avuthundhi|kavali|kaavali|ledu|kadha|kada|ante|daggara|gurinchi|"
+    r"telusa|teliyadu|baadha|noppi|gunde|oopiri|raktam|jwaram|mandulu|pariksha|"
+    r"parikshalu|report lo|na report|naa report)\b",
+    re.IGNORECASE,
+)
+
+
+def is_romanized_telugu(query: str) -> bool:
+    """Recognize common Telugu transliteration without misclassifying ordinary English."""
+    return bool(ROMAN_TELUGU_MARKERS.search(query or ""))
+
+
 def detect_language(query: str, requested_lang: str | None = None) -> str:
-    """Detect whether user requested Telugu or typed in Telugu script."""
+    """Detect English, Telugu script, or Romanized Telugu for chat replies."""
     if requested_lang and requested_lang.lower().startswith("te"):
         return "te"
-    # Telugu Unicode Block: U+0C00 to U+0C7F
-    if re.search(r"[\u0C00-\u0C7F]", query):
+    q_low = (query or "").lower()
+    # Respect an explicit request to answer in English.
+    if re.search(r"\b(in english|answer in english|english lo cheppu)\b", q_low):
+        return "en"
+    if re.search(r"[\u0C00-\u0C7F]", query or ""):
         return "te"
-    q_low = query.lower()
-    if "telugu" in q_low or "తెలుగు" in q_low or "in telugu" in q_low:
+    if "telugu" in q_low or "in telugu" in q_low or is_romanized_telugu(query):
         return "te"
     return "en"
 
@@ -97,6 +114,14 @@ EMERGENCY_KEYWORDS = [
     r"\bsevere head trauma\b",
     r"\banaphylaxis\b",
     r"\bsevere allergic\b",
+    # Common Romanized Telugu emergency descriptions.
+    r"\bgunde noppi\b",
+    r"\bchati noppi\b",
+    r"\bgundepotu\b",
+    r"\boopiri aadatam ledu\b",
+    r"\bshvaasa teesukolekapotunna\b",
+    r"\bspruha tappindi\b",
+    r"\bpakshavaatham\b",
     r"ఛాతీ నొప్పి",
     r"శ్వాస ఆడటం లేదు",
     r"గుండెపోటు",
@@ -117,6 +142,10 @@ UNREADABLE_PRESCRIPTION_KEYWORDS = [
     r"కనిపించని",
     r"ప్రిస్క్రిప్షన్ సరిగ్గా లేదు",
     r"మోతాదు ఎంత తీసుకోవాలి",
+    r"\bblur ga unna prescription\b",
+    r"\bdose guess cheyy\w*\b",
+    r"\bmandu dose entha\b",
+    r"\bmandulu entha teesukovali\b",
 ]
 
 
@@ -228,12 +257,12 @@ def classify_intent(query: str) -> str:
         if re.search(p, q):
             return INTENT_UNREADABLE_PRESCRIPTION
 
-    # 3. Diagnosis or cure requests
-    if re.search(r"\b(do i have|diagnose me|am i cured|what disease|is it cancer|tell me what illness)\b", q):
+    # 3. Diagnosis or cure requests (English and Romanized Telugu)
+    if re.search(r"\b(do i have|diagnose me|am i cured|what disease|is it cancer|tell me what illness|naaku ee rogam unda|naaku cancer unda|nenu cure ayyanaa)\b", q):
         return INTENT_DIAGNOSIS_TREATMENT_REQUEST
 
     # 4. Medication dosage change or stop
-    if re.search(r"\b(should i stop|change my dose|can i take double|increase my dose|stop taking|skip my medicine)\b", q):
+    if re.search(r"\b(should i stop|change my dose|can i take double|increase my dose|stop taking|skip my medicine|dose marchala|mandu aapalaa|mandu aapala|dose penchala|dose tagginchala|rendu tablets teesukovacha)\b", q):
         return INTENT_MEDICATION_CHANGE_OR_DOSAGE
 
     # 5. Historical comparison
@@ -274,8 +303,13 @@ def classify_intent(query: str) -> str:
     if re.search(r"\b(headache|fever|cough|tired|pain|ache|nausea|dizzy|fatigue|swelling|symptom)\b", q):
         return INTENT_SYMPTOM_QUERY
 
-    # 14. General health education
+    # 14. General health education, including broad non-record health questions.
     if re.search(r"\b(what is hba1c|what is diabetes|what does egfr mean|what is hypertension|normal range for)\b", q):
+        return INTENT_GENERAL_HEALTH_EDUCATION
+    if (
+        re.search(r"\b(what is|what are|explain|meaning of|how does|why does|causes of|symptoms of|prevention of|how can i prevent)\b", q)
+        and not re.search(r"\b(my|our|latest|uploaded|report|prescription|medication|medicine|lab|test result|last visit|my records)\b", q)
+    ):
         return INTENT_GENERAL_HEALTH_EDUCATION
 
     # 15. Non-healthcare query
@@ -1216,7 +1250,12 @@ async def generate_openrouter_response(
         INTENT_PREVIOUS_CONVERSATION_QUERY,
     }
     model = OPENROUTER_RECORD_MODEL if is_record_question else OPENROUTER_HEALTH_MODEL
-    lang_instruction = "Answer in clear, natural Telugu (తెలుగు)." if language == "te" else "Answer in clear, friendly English."
+    if language == "te" and is_romanized_telugu(query):
+        lang_instruction = "Answer in natural, easy-to-read Roman Telugu (Telugu written using English letters), because the user typed Romanized Telugu. Avoid switching to English except for necessary medical terms, which should be explained simply."
+    elif language == "te":
+        lang_instruction = "Answer in clear, natural Telugu (తెలుగు)."
+    else:
+        lang_instruction = "Answer in clear, friendly English."
     evidence: dict[str, Any] = {}
     if records:
         patient = records.get("patient")
