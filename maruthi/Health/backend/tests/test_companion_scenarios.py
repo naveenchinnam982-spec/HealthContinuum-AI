@@ -380,3 +380,41 @@ async def test_simple_greeting_does_not_return_record_fallback(client: AsyncClie
     assert "AI Health Assistant" in data["answer"]
     assert "couldn't find that information" not in data["answer"].lower()
     assert data["provider"] == "greeting_fallback"
+
+
+# ── Bilingual language detection and Romanized Telugu safety ──────────────────
+def test_detect_language_supports_romanized_telugu():
+    from app.services.companion_service import detect_language
+
+    assert detect_language("Naku naa report lo em undi?", "en") == "te"
+    assert detect_language("What does my latest report show?", "en") == "en"
+    assert detect_language("నా రిపోర్ట్ వివరించండి", "en") == "te"
+    assert detect_language("Naku naa report lo em undi?", "te") == "te"
+
+
+@pytest.mark.asyncio
+async def test_romanized_telugu_emergency_is_escalated(client: AsyncClient, synthetic_patient: str):
+    response = await client.post(
+        f"/api/patients/{synthetic_patient}/companion/chat",
+        json={"query": "Naaku oopiri aadatam ledu", "language": "en"},
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["language"] == "te"
+    assert data["safety_status"] == "EMERGENCY_ESCALATION"
+    assert "108" in data["answer"] or "112" in data["answer"]
+
+
+@pytest.mark.asyncio
+async def test_general_health_question_routes_to_health_education(client: AsyncClient, synthetic_patient: str):
+    from app.services.companion_service import INTENT_GENERAL_HEALTH_EDUCATION, classify_intent
+
+    assert classify_intent("What is asthma?") == INTENT_GENERAL_HEALTH_EDUCATION
+    response = await client.post(
+        f"/api/patients/{synthetic_patient}/companion/chat",
+        json={"query": "What is asthma?", "language": "en"},
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["intent"] == "GENERAL_HEALTH_EDUCATION"
+    assert data["safety_status"] == "SAFE"
