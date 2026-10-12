@@ -37,7 +37,8 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Doctor dashboard routes. /doctor/login is reserved for the patient hackathon URL. */}
+          {/* Public doctor sign-in route; all dashboard pages remain protected. */}
+          <Route path="/doctor/login" element={<LoginRoute><LoginPage /></LoginRoute>} />
           <Route path="/doctor/overview" element={<ProtectedRoute><OverviewPage /></ProtectedRoute>} />
           <Route path="/doctor/patients" element={<ProtectedRoute><PatientsPage /></ProtectedRoute>} />
           <Route path="/doctor/patients/:patientId" element={<ProtectedRoute><PatientDetailPage /></ProtectedRoute>} />

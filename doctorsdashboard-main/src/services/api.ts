@@ -204,12 +204,6 @@ export const authService = {
       return { doctor: null, error: errorMsg };
     }
 
-    // Network error fallback for offline demo testing
-    if (email.toLowerCase() === 'ananya.sharma@continuumhealth.in' && (password === 'demo1234' || password === 'password123')) {
-      setDoctorSession('demo-token', DEMO_DOCTOR);
-      return { doctor: DEMO_DOCTOR, error: null };
-    }
-
     return { doctor: null, error: 'Cannot connect to backend server. Please verify backend is running on port 8000.' };
   },
 
@@ -223,7 +217,7 @@ export const authService = {
       const stored = localStorage.getItem(DOCTOR_STORAGE_KEY) || sessionStorage.getItem(DOCTOR_STORAGE_KEY);
       if (stored) return JSON.parse(stored);
     } catch {}
-    return DEMO_DOCTOR;
+    return null;
   },
 
   async checkSession(): Promise<DoctorProfile | null> {

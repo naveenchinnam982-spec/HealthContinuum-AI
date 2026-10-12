@@ -4,6 +4,7 @@ HealthContinuum AI — FastAPI Application Entry Point
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from pathlib import Path
@@ -27,7 +28,7 @@ from app.api.routes import (
     visits,
 )
 from app.core.config import get_settings
-from app.database.connection import create_all_tables
+from app.database.connection import AsyncSessionLocal, create_all_tables
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("healthcontinuum")
@@ -42,6 +43,20 @@ async def lifespan(app: FastAPI):
     logger.info("Starting HealthContinuum AI backend...")
     await create_all_tables()
     logger.info("Database tables verified.")
+
+    # Render sets SEED_DEMO_DATA=true for the hackathon/demo environment.
+    # Seed only the demo doctor account here; the seed function is idempotent
+    # and never resets the password of an account that already exists.
+    if os.getenv("SEED_DEMO_DATA", "false").strip().lower() in {"1", "true", "yes"}:
+        try:
+            from seed import seed_doctor
+
+            async with AsyncSessionLocal() as db:
+                await seed_doctor(db)
+            logger.info("Demo doctor account seed checked.")
+        except Exception:
+            logger.exception("Demo doctor seeding failed; authentication will require a provisioned doctor account.")
+
     yield
     logger.info("HealthContinuum AI backend shutting down.")
 

@@ -1136,6 +1136,13 @@ function renderLogin() {
           </svg>
           <span>Continue with Google</span>
         </button>
+
+        <button type="button" class="btn btn-full" id="btn-doctor-login"
+          onclick="window.location.assign('/doctor/login')"
+          style="height:50px;font-size:15px;font-weight:650;display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid var(--border-color, #dbe4ee);background:#fff;color:#0f766e;border-radius:12px;">
+          <span aria-hidden="true">🩺</span>
+          <span>Sign as a Doctor</span>
+        </button>
       </form>
     `;
   } else if (currentAuthTab === 'demo') {
