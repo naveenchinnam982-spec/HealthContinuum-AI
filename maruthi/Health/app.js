@@ -1997,7 +1997,7 @@ function renderCompanion() {
                 ? 'Preparing answer...'
                 : (state === 'speaking'
                   ? 'Speaking answer...'
-                  : (state === 'transcribing' ? 'Transcribing...' : (state === 'error' ? 'Microphone issue' : 'Tap to speak')))}
+                  : (state === 'transcribing' ? 'Transcribing...' : (state === 'error' ? 'Microphone issue' : 'Tap to speak'))))}
           </div>
           <div class="hc-voice-status-sub" id="companion-voice-status" aria-live="polite">
             ${escapeHtml(statusMessage || (state === 'listening'
