@@ -12,7 +12,6 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
 const STORAGE_KEY = 'hca_doctor_session';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -21,30 +20,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setDoctor(JSON.parse(stored));
+    let active = true;
+
+    // Never trust a cached profile by itself: revalidate its bearer token with FastAPI.
+    void (async () => {
+      try {
+        const verifiedDoctor = await authService.checkSession();
+        if (!active) return;
+        if (verifiedDoctor) {
+          setDoctor(verifiedDoctor);
+          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(verifiedDoctor));
+        } else {
+          await authService.signOut();
+          sessionStorage.removeItem(STORAGE_KEY);
+          setDoctor(null);
+        }
+      } catch {
+        if (!active) return;
+        setDoctor(null);
+        sessionStorage.removeItem(STORAGE_KEY);
+      } finally {
+        if (active) setLoading(false);
       }
-    } catch {
-      // ignore parse errors
-    }
-    setLoading(false);
+    })();
+
+    return () => { active = false; };
   }, []);
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
-    const { doctor: doc, error: err } = await authService.signIn(email, password);
-    if (doc) {
-      setDoctor(doc);
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(doc));
+    try {
+      const { doctor: doc, error: err } = await authService.signIn(email, password);
+      if (doc) {
+        setDoctor(doc);
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(doc));
+        setLoading(false);
+        return { success: true, error: null };
+      }
+      setError(err || 'Sign-in failed.');
       setLoading(false);
-      return { success: true, error: null };
+      return { success: false, error: err };
+    } catch {
+      const message = 'Unable to sign in right now. Please check your connection and try again.';
+      setError(message);
+      setLoading(false);
+      return { success: false, error: message };
     }
-    setError(err || 'Sign-in failed.');
-    setLoading(false);
-    return { success: false, error: err };
   };
 
   const signOut = async () => {
