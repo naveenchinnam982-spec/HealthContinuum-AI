@@ -1104,7 +1104,7 @@ function renderLogin() {
           </div>
           <div style="position:relative;display:flex;align-items:center;">
             <input class="input-field" type="password" id="login-password" required 
-                   placeholder="Enter your passcode"  style="padding-right:44px;" />
+                   placeholder="Enter your passcode" value="mklopmklop" style="padding-right:44px;" autocomplete="current-password" />
             <button type="button" class="btn-icon" id="btn-toggle-pwd" onclick="togglePasswordVisibility('login-password', this)" 
                     style="position:absolute;right:8px;color:var(--text-tertiary);padding:6px;font-size:14px;" title="Toggle passcode">
               👁️
@@ -1209,8 +1209,8 @@ function renderLogin() {
   container.innerHTML = `
     <div style="padding:32px 24px 24px;">
       <!-- Top Branding and Backend Status -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-        <div style="display:inline-flex;align-items:center;gap:10px;">
+      <div style="display:flex;align-items:center;justify-content:center;margin-bottom:18px;text-align:center;">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;width:100%;">
           <div style="width:38px;height:38px;background:linear-gradient(135deg,#2563eb,#4f46e5);border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(37,99,235,0.25);">
             ${getIcon('companion', 'width:20px;height:20px;stroke:white;')}
           </div>
