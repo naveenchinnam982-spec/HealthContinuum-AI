@@ -1081,7 +1081,7 @@ function renderLogin() {
   if (!container) return;
 
   const isConnected = STATE.backendConnected;
-  const patientUhid = STATE.patient?.uhid || 'HC-2024-00847';
+  const patientUhid = 'newguru60@gmail.com';
 
   let tabBodyHtml = '';
 
@@ -1092,15 +1092,15 @@ function renderLogin() {
 
         <div class="input-group">
           <label class="input-label" for="login-identifier">Email Address</label>
-          <input class="input-field" type="text" id="login-identifier" required 
-                 placeholder="e.g. HC-2024-00847 or ramesh.kumar@synthetic.example" 
+          <input class="input-field" type="email" id="login-identifier" required 
+                 placeholder="Enter your email address" 
                  value="${patientUhid}" />
         </div>
 
         <div class="input-group">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <label class="input-label" for="login-password">Passcode</label>
-            <span style="font-size:12px;color:var(--blue);cursor:pointer;font-weight:600;" onclick="fillDemoCredentials()">Use demo (password123)</span>
+            <span style="font-size:12px;color:var(--blue);font-weight:600;">Password</span>
           </div>
           <div style="position:relative;display:flex;align-items:center;">
             <input class="input-field" type="password" id="login-password" required 
