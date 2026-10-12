@@ -1864,7 +1864,7 @@ function renderCompanion() {
   const container = document.getElementById('companion-content');
   if (!container) return;
 
-  const { state, chatHistory, currentDraft } = STATE.voiceCompanion;
+  const { state, chatHistory, currentDraft, statusMessage } = STATE.voiceCompanion;
 
   container.innerHTML = `
     <div class="hc-companion-page-wrapper">
@@ -1911,9 +1911,10 @@ function renderCompanion() {
 
           <!-- Centered 3D Doctor Avatar with talking effect (No Background) -->
           <div class="hc-3d-doctor-avatar-container">
-            <img src="assets/doctor_avatar_3d.png" 
-                 alt="3D AI Health Doctor" 
-                 class="hc-3d-doctor-avatar-img ${state === 'speaking' || state === 'listening' ? 'talking' : ''}" 
+            <img src="/patient/assets/doctor_avatar_3d.png"
+                 onerror="this.onerror=null;this.src='/patient/assets/ai_doctor_3d.jpg';"
+                 alt="3D AI Health Doctor"
+                 class="hc-3d-doctor-avatar-img ${state === 'speaking' || state === 'listening' ? 'talking' : ''}"
                  id="companion-3d-avatar-img" />
           </div>
 
@@ -1989,19 +1990,21 @@ function renderCompanion() {
           </div>
 
           <!-- Status Title and Subtitle -->
-          <div class="hc-voice-status-title">
-            ${state === 'listening' 
-              ? 'Listening...' 
-              : (state === 'speaking' 
-                ? 'Speaking answer...' 
-                : (state === 'transcribing' ? 'Transcribing...' : 'Tap to speak'))}
+          <div class="hc-voice-status-title" aria-live="polite">
+            ${state === 'listening'
+              ? 'Listening...'
+              : (state === 'processing'
+                ? 'Preparing answer...'
+                : (state === 'speaking'
+                  ? 'Speaking answer...'
+                  : (state === 'transcribing' ? 'Transcribing...' : (state === 'error' ? 'Microphone issue' : 'Tap to speak')))}
           </div>
-          <div class="hc-voice-status-sub">
-            ${state === 'listening' 
-              ? "Speak clearly. I'm here to help." 
-              : (state === 'speaking' 
-                ? 'Speaking response aloud — tap Stop to mute' 
-                : "Speak clearly. I'm here to help.")}
+          <div class="hc-voice-status-sub" id="companion-voice-status" aria-live="polite">
+            ${escapeHtml(statusMessage || (state === 'listening'
+              ? "Speak clearly. I'm here to help."
+              : (state === 'speaking'
+                ? 'Speaking response aloud — tap Stop to mute'
+                : "Speak clearly. I'm here to help.")))}
           </div>
 
           <!-- 3 Circular Action Buttons: Replay, Stop, Observing... -->
@@ -2557,61 +2560,96 @@ function startListening() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     STATE.voiceCompanion.state = 'error';
+    STATE.voiceCompanion.statusMessage = 'Speech recognition is not supported in this browser. Use the keyboard to type your question.';
     renderCompanion();
-    const preview = document.getElementById('voice-live-preview');
-    if (preview) {
-      preview.textContent = 'Speech recognition not supported in this browser. You can type below.';
-    }
-    setTimeout(() => {
-      STATE.voiceCompanion.state = 'idle';
-      renderCompanion();
-    }, 2800);
     return;
   }
 
   try {
     const recognition = new SpeechRecognition();
-    recognition.lang = STATE.lang === 'te' ? 'te-IN' : 'en-US';
+    recognition.lang = STATE.lang === 'te' ? 'te-IN' : (STATE.lang === 'hi' ? 'hi-IN' : 'en-US');
     recognition.interimResults = true;
     recognition.continuous = false;
     recognition.maxAlternatives = 1;
 
+    let finalTranscript = '';
+    let submitted = false;
+    STATE.voiceCompanion.currentDraft = '';
+    STATE.voiceCompanion.currentTranscript = '';
+    STATE.voiceCompanion.statusMessage = 'Microphone is starting. Speak after the listening indicator appears.';
     STATE.voiceCompanion.recognition = recognition;
     STATE.voiceCompanion.state = 'listening';
     renderCompanion();
 
+    recognition.onstart = () => {
+      STATE.voiceCompanion.state = 'listening';
+      STATE.voiceCompanion.statusMessage = 'Listening now — speak clearly.';
+      const status = document.getElementById('companion-voice-status');
+      if (status) status.textContent = STATE.voiceCompanion.statusMessage;
+    };
+
     recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map(result => result[0].transcript)
-        .join('');
+      const results = Array.from(event.results);
+      const transcript = results.map(result => result[0].transcript.trim()).filter(Boolean).join(' ').trim();
+      const finalParts = results.filter(result => result.isFinal).map(result => result[0].transcript.trim()).filter(Boolean);
+      if (finalParts.length) finalTranscript = finalParts.join(' ').trim();
 
       STATE.voiceCompanion.state = 'transcribing';
       STATE.voiceCompanion.currentDraft = transcript;
       STATE.voiceCompanion.currentTranscript = transcript;
+      STATE.voiceCompanion.statusMessage = transcript ? 'Heard: ' + transcript : 'Listening…';
 
       const input = document.getElementById('companion-chat-input');
       if (input) {
         input.value = transcript;
         updateComposerButtons();
       }
+      const status = document.getElementById('companion-voice-status');
+      if (status) status.textContent = STATE.voiceCompanion.statusMessage;
     };
 
     recognition.onerror = (event) => {
       console.warn('[Voice] SpeechRecognition error:', event.error);
+      const messages = {
+        'not-allowed': 'Microphone permission is blocked. Allow microphone access for this site in Chrome settings, then try again.',
+        'service-not-allowed': 'Speech recognition service is blocked. Check browser permissions or try again later.',
+        'audio-capture': 'No microphone was found. Check your phone microphone and browser permissions.',
+        'network': 'Speech recognition needs a working internet connection. Check your network and try again.',
+        'no-speech': 'I did not hear speech. Tap the mic and speak after “Listening…” appears.',
+        'aborted': 'Listening was stopped.',
+        'language-not-supported': 'This speech language is not available in the browser. Switch language or type your question.'
+      };
       STATE.voiceCompanion.state = 'error';
+      STATE.voiceCompanion.statusMessage = messages[event.error] || ('Microphone error: ' + event.error + '. You can type your question instead.');
       renderCompanion();
-      setTimeout(() => {
-        STATE.voiceCompanion.state = 'idle';
-        renderCompanion();
-      }, 2500);
     };
 
     recognition.onend = () => {
       const input = document.getElementById('companion-chat-input');
-      const text = input ? input.value.trim() : (STATE.voiceCompanion.currentDraft || '').trim();
-      STATE.voiceCompanion.currentDraft = text;
-      STATE.voiceCompanion.state = 'idle';
+      const visibleText = input ? input.value.trim() : (STATE.voiceCompanion.currentDraft || '').trim();
+      const text = (finalTranscript || visibleText).trim();
       STATE.voiceCompanion.recognition = null;
+
+      if (STATE.voiceCompanion.state === 'error') {
+        renderCompanion();
+        return;
+      }
+
+      STATE.voiceCompanion.state = 'idle';
+      if (finalTranscript && !submitted) {
+        submitted = true;
+        STATE.voiceCompanion.currentDraft = '';
+        STATE.voiceCompanion.currentTranscript = '';
+        STATE.voiceCompanion.statusMessage = 'Voice captured. Preparing your answer…';
+        handleSendCompanionMessage(finalTranscript);
+        return;
+      }
+
+      STATE.voiceCompanion.currentDraft = text;
+      STATE.voiceCompanion.currentTranscript = text;
+      STATE.voiceCompanion.statusMessage = text
+        ? 'Transcript ready. Tap Send to ask, or edit the text first.'
+        : 'No speech was captured. Tap the mic again and speak, or type your question.';
       renderCompanion();
     };
 
@@ -2619,6 +2657,9 @@ function startListening() {
   } catch (err) {
     console.error('[Voice] Start error:', err);
     STATE.voiceCompanion.state = 'error';
+    STATE.voiceCompanion.statusMessage = err && err.name === 'NotAllowedError'
+      ? 'Microphone permission is blocked. Allow microphone access for this site in Chrome settings.'
+      : 'Could not start the microphone. Check site permissions and try again, or type your question.';
     renderCompanion();
   }
 }
@@ -2648,7 +2689,7 @@ function speakText(text) {
     renderCompanion();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = STATE.lang === 'te' ? 'te-IN' : 'en-US';
+    utterance.lang = STATE.lang === 'te' ? 'te-IN' : (STATE.lang === 'hi' ? 'hi-IN' : 'en-US');
     utterance.rate = 0.95;
     utterance.pitch = 1.0;
 
