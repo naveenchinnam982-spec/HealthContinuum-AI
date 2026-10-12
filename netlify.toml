@@ -1,20 +1,25 @@
-# Patient and Doctor frontends deployed together; FastAPI remains on Render.
+# Deploy the patient-first HealthContinuum app from maruthi/Health.
+# Doctor URLs intentionally redirect to the patient dashboard; the old doctor source
+# remains in the repository for rollback/review and is no longer built into this site.
 [build]
   base = "."
-  command = "set -e; rm -rf dist; mkdir -p dist/patient; cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/; cp -R maruthi/Health/assets dist/patient/; echo \"window.HC_API_BASE_URL = '$HC_API_BASE_URL';\" > dist/patient/api-config.js; cd doctorsdashboard-main; npm ci; if [ -n \"$HC_API_BASE_URL\" ]; then export VITE_API_BASE_URL=\"${HC_API_BASE_URL%/}/api\"; fi; VITE_BASE_PATH=/doctor/ npm run build -- --outDir ../dist/doctor"
+  command = "set -e; rm -rf dist; mkdir -p dist/patient; cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/; cp -R maruthi/Health/assets dist/patient/; echo \"window.HC_API_BASE_URL = '$HC_API_BASE_URL';\" > dist/patient/api-config.js"
   publish = "dist"
 
-# Doctor SPA entry point and deep links.
+# Send every legacy doctor URL to the patient dashboard entry point.
 [[redirects]]
   from = "/doctor/login"
-  to = "/doctor/index.html"
-  status = 200
+  to = "/"
+  status = 302
+  force = true
 
 [[redirects]]
   from = "/doctor/*"
-  to = "/doctor/index.html"
-  status = 200
+  to = "/"
+  status = 302
+  force = true
 
+# Patient SPA entry point and deep links.
 [[redirects]]
   from = "/"
   to = "/patient/index.html"
