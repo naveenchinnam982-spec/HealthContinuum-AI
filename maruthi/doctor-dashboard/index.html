@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <meta name="description" content="HealthContinuum AI — secure doctor workspace for patient-authorized record review.">
+  <title>Doctor Workspace · HealthContinuum AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/doctor/styles.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <main id="app" class="app-shell">
+    <section class="login-layout" id="login-view">
+      <div class="login-story">
+        <div class="brand"><span class="brand-mark">H+</span><span>HealthContinuum<span class="brand-ai"> AI</span></span></div>
+        <div class="eyebrow"><span class="status-dot"></span> CLINICAL WORKSPACE</div>
+        <h1>Care gets clearer<br><span>when records connect.</span></h1>
+        <p class="story-copy">A focused workspace for reviewing patient-authorized medical history, lab results and clinical documents — with access that is explicit and time-limited.</p>
+        <div class="story-points">
+          <div><span class="point-icon">01</span><span><b>Verify access</b><small>Use the patient-provided access PIN.</small></span></div>
+          <div><span class="point-icon">02</span><span><b>Review the record</b><small>See available history and documents in one place.</small></span></div>
+          <div><span class="point-icon">03</span><span><b>Keep the patient in control</b><small>Access is governed by the backend grant.</small></span></div>
+        </div>
+        <div class="story-foot"><span class="shield">✓</span> Privacy-first clinical review <span class="foot-sep">•</span> Session protected</div>
+      </div>
+      <div class="login-panel-wrap">
+        <form id="login-form" class="login-panel">
+          <div class="panel-icon">✳</div>
+          <div class="eyebrow muted">WELCOME BACK</div>
+          <h2>Doctor sign in</h2>
+          <p class="panel-subtitle">Sign in with your registered clinical account to continue.</p>
+          <label for="email">Work email</label>
+          <div class="field"><span class="field-icon">✉</span><input id="email" name="email" type="email" autocomplete="username" placeholder="doctor@hospital.com" required></div>
+          <label for="password">Password</label>
+          <div class="field"><span class="field-icon">⌑</span><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required minlength="1"><button type="button" class="show-password" id="toggle-password" aria-label="Show password">Show</button></div>
+          <div id="login-error" class="message error" role="alert" hidden></div>
+          <button class="primary-button" id="login-submit" type="submit"><span>Sign in securely</span><span aria-hidden="true">↗</span></button>
+          <div class="security-note"><span>◈</span> Credentials are verified by the HealthContinuum API. No demo bypass.</div>
+          <div class="login-bottom"><span>Need access?</span> Contact your system administrator.</div>
+        </form>
+      </div>
+    </section>
+    <section id="workspace-view" class="workspace" hidden>
+      <aside class="sidebar">
+        <div class="brand sidebar-brand"><span class="brand-mark">H+</span><span>HealthContinuum<span class="brand-ai"> AI</span></span></div>
+        <div class="side-label">WORKSPACE</div>
+        <button class="side-link active" data-tab="overview"><span>◫</span> Overview</button>
+        <button class="side-link" data-tab="records"><span>▤</span> Patient records</button>
+        <button class="side-link" data-tab="documents"><span>▧</span> Documents & OCR</button>
+        <div class="sidebar-bottom"><div class="secure-card"><span class="secure-icon">◇</span><b>Secure review</b><small>Only open records after verifying the patient’s PIN.</small></div><div class="doctor-mini"><div class="avatar" id="doctor-avatar">DR</div><div class="doctor-mini-text"><b id="doctor-name">Doctor</b><small id="doctor-specialty">Clinical team</small></div><button id="signout" class="icon-button" title="Sign out" aria-label="Sign out">↪</button></div></div>
+      </aside>
+      <div class="main-area">
+        <header class="topbar"><div><div class="breadcrumb">HealthContinuum <span>/</span> <b id="breadcrumb-current">Overview</b></div><div class="top-title" id="page-title">Good to see you, Doctor</div></div><div class="top-actions"><span class="api-status" id="api-status"><i></i> API connection checking</span><div class="avatar top-avatar" id="top-avatar">DR</div></div></header>
+        <div class="content-area">
+          <div id="global-message" class="message" hidden role="status"></div>
+          <section class="tab-page" id="tab-overview">
+            <div class="welcome-strip"><div><div class="eyebrow muted">YOUR CLINICAL DESK</div><h2>Review with confidence.</h2><p>Patient data appears only after a valid, active access grant.</p></div><div class="welcome-art"><span>✚</span><i></i><i></i><i></i></div></div>
+            <div class="metric-grid"><article class="metric-card"><div class="metric-top"><span>Verified sessions</span><span class="metric-symbol teal">✓</span></div><strong id="metric-sessions">0</strong><small>In this browser session</small></article><article class="metric-card"><div class="metric-top"><span>Authorized patient</span><span class="metric-symbol blue">⌕</span></div><strong id="metric-patient">None</strong><small>Patient consent required</small></article><article class="metric-card"><div class="metric-top"><span>Documents available</span><span class="metric-symbol purple">▤</span></div><strong id="metric-docs">—</strong><small>After access is verified</small></article></div>
+            <div class="section-heading"><div><h3>Start a secure review</h3><p>Enter the access PIN generated by the patient in their HealthContinuum app.</p></div><span class="section-tag"><i></i> 20-minute grant</span></div>
+            <div class="review-card"><div class="review-card-icon">⌑</div><div class="review-card-copy"><h4>Verify patient access</h4><p>The PIN is checked by the API. Expired, revoked or invalid codes are rejected.</p><div class="pin-row"><label class="sr-only" for="access-pin">Six digit access PIN</label><input id="access-pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="• • • • • •" aria-label="Six digit patient access PIN"><button id="verify-pin" class="primary-button compact">Verify PIN <span>→</span></button></div><div id="pin-message" class="message" hidden role="status"></div></div><div class="review-badge">PATIENT<br>AUTHORIZED</div></div>
+            <div class="section-heading lower-heading"><div><h3>Clinical review flow</h3><p>Designed to keep the source document and review context together.</p></div></div>
+            <div class="workflow-grid"><div class="workflow-card"><span class="workflow-number">01</span><div class="workflow-icon">▧</div><b>Collect</b><p>Open the patient-authorized record and available source documents.</p></div><div class="workflow-card"><span class="workflow-number">02</span><div class="workflow-icon">⌕</div><b>Inspect</b><p>Review extracted document metadata and the original record when available.</p></div><div class="workflow-card"><span class="workflow-number">03</span><div class="workflow-icon">✓</div><b>Verify</b><p>Use clinical judgement; AI output is not a substitute for clinician review.</p></div></div>
+          </section>
+          <section class="tab-page" id="tab-records" hidden>
+            <div class="page-heading"><div><div class="eyebrow muted">PATIENT-CONTROLLED ACCESS</div><h2>Patient records</h2><p>Record details are available only after PIN verification.</p></div><button class="secondary-button" id="refresh-records">↻ Refresh records</button></div>
+            <div id="patient-empty" class="empty-state"><span>⌕</span><h3>No patient record open</h3><p>Return to Overview and verify a current patient access PIN.</p><button class="secondary-button" data-go="overview">Verify patient access</button></div>
+            <div id="patient-record" hidden></div>
+          </section>
+          <section class="tab-page" id="tab-documents" hidden>
+            <div class="page-heading"><div><div class="eyebrow muted">DOCUMENT REVIEW</div><h2>Documents & OCR</h2><p>Review available files and extraction status from the authorized patient record.</p></div><span class="section-tag"><i></i> Clinician in the loop</span></div>
+            <div id="documents-empty" class="empty-state"><span>▧</span><h3>Waiting for an authorized record</h3><p>Verify the patient’s access PIN before viewing their clinical documents.</p><button class="secondary-button" data-go="overview">Verify patient access</button></div>
+            <div id="documents-list" hidden></div>
+            <div class="clinical-note"><span>ⓘ</span><div><b>Human verification is essential</b><p>OCR and extracted fields can be incomplete or wrong. Confirm important values against the original document before making clinical decisions.</p></div></div>
+          </section>
+          <footer class="app-footer"><span>HealthContinuum AI · Clinical workspace</span><span>Patient-authorized access only</span></footer>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/doctor/api-config.js"></script>
+  <script src="/doctor/app.js"></script>
+</body>
+</html>
