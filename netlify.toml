@@ -2,7 +2,7 @@
 # The doctor dashboard source remains in the repository for reference, but it is not built or published.
 [build]
   base = "."
-  command = "mkdir -p dist/patient && cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/ && cp -R maruthi/Health/assets dist/patient/"
+  command = "mkdir -p dist/patient && cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/ && cp -R maruthi/Health/assets dist/patient/"
   publish = "dist"
 
 # Keep the required hackathon URL and serve the existing patient application.
