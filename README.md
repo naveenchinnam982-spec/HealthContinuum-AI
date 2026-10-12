@@ -306,3 +306,20 @@ This project is intended for hackathon demonstration and clinical continuity res
 <p align="center">
   <strong>Less record-hunting. Fewer question marks. Better conversations with clinicians. 💙</strong>
 </p>
+
+---
+
+## 🌐 Deploy the document-processing API
+
+The Netlify site is a static frontend; it cannot run the FastAPI/Python OCR service by itself. The backend must be deployed separately.
+
+1. In Render, choose **New → Blueprint**, connect this repository, and let Render read `render.yaml`. The service installs Tesseract and the Python PDF/image/OCR dependencies from the backend Dockerfile.
+2. Wait for the Render service to finish deploying. Verify that `https://YOUR-RENDER-SERVICE.onrender.com/api/health` returns JSON with `"success": true`.
+3. In Netlify, open **Site configuration → Environment variables** and add `HC_API_BASE_URL` with the Render service origin only, for example `https://YOUR-RENDER-SERVICE.onrender.com` (do not add `/api` unless you prefer; the frontend normalizes either form).
+4. Trigger a new Netlify deploy so the build generates `/patient/api-config.js`.
+5. Test with a text-based PDF, a scanned PDF, and a JPG/PNG. Confirm the review screen contains extracted text/fields and that Confirm & Save returns a successful API response.
+
+**Prototype deployment limitations:** the Render blueprint uses a free web service and local SQLite/file storage. Free instances may sleep, and local database/uploads may be lost on restart or redeploy. This setup is for synthetic/demo documents only—not real patient records or production clinical use. Before real use, configure durable database and file storage, validate authentication/ownership on every API route, and complete security and OCR validation.
+
+If `HC_API_BASE_URL` is unset, the frontend falls back to same-origin `/api`, which is useful locally when FastAPI serves the app but will not connect to a separate backend on Netlify.
+

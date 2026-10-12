@@ -6,9 +6,17 @@
 
 'use strict';
 
-const API_BASE = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http'))
-  ? `${window.location.origin}/api`
-  : 'http://127.0.0.1:8000/api';
+const API_BASE = (() => {
+  let configured = typeof window !== 'undefined' && typeof window.HC_API_BASE_URL === 'string'
+    ? window.HC_API_BASE_URL.trim()
+    : '';
+  while (configured.endsWith('/')) configured = configured.slice(0, -1);
+  if (configured) return configured.toLowerCase().endsWith('/api') ? configured : configured + '/api';
+  if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) {
+    return window.location.origin + '/api';
+  }
+  return 'http://127.0.0.1:8000/api';
+})();
 
 let CURRENT_PATIENT_ID = (typeof localStorage !== 'undefined' && localStorage.getItem('hc_patient_id')) || 'pat-ramesh-001';
 

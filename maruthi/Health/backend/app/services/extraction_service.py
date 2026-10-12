@@ -728,6 +728,39 @@ class DocumentExtractionEngine:
             "processing_status": STATUS_EXTRACTED,
         }
 
+    def _ocr_image(self, image: Image.Image) -> str:
+        """Run Tesseract OCR on a preprocessed image; return empty text on OCR failure."""
+        try:
+            import pytesseract
+            return (pytesseract.image_to_string(image, lang="eng", config="--psm 6") or "").strip()
+        except Exception:
+            # Keep extraction honest: the caller flags unreadable pages instead of inventing text.
+            return ""
+
+    def _ocr_scanned_pdf(self, file_bytes: bytes) -> tuple[str, list[dict[str, Any]]]:
+        """Render scanned PDF pages and OCR them when native PDF text is absent."""
+        pages_data: list[dict[str, Any]] = []
+        texts: list[str] = []
+        try:
+            import fitz  # PyMuPDF
+            with fitz.open(stream=file_bytes, filetype="pdf") as pdf:
+                for index, page in enumerate(pdf):
+                    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+                    page_image = Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB")
+                    enhanced, _metadata = self.preprocess_image(pix.tobytes("png"))
+                    page_text = self._ocr_image(enhanced or page_image)
+                    pages_data.append({
+                        "page_number": index + 1,
+                        "text": page_text,
+                        "has_text": bool(page_text.strip()),
+                        "ocr_used": True,
+                    })
+                    if page_text:
+                        texts.append(f"--- Page {index + 1} ---\n{page_text}")
+        except Exception:
+            return "", pages_data
+        return "\n\n".join(texts), pages_data
+
     def process_document(
         self,
         file_bytes: bytes,
@@ -745,17 +778,19 @@ class DocumentExtractionEngine:
 
         if is_pdf:
             extracted_text, page_details = self.extract_text_from_pdf(file_bytes)
+            # Scanned PDFs often contain no text layer; render pages and OCR them.
+            if not extracted_text.strip():
+                extracted_text, page_details = self._ocr_scanned_pdf(file_bytes)
         else:
-            # Image file: run OpenCV & PIL enhancement
+            # Image upload: preprocess and OCR the actual pixels (never decode binary bytes as text).
             img, image_metadata = self.preprocess_image(file_bytes)
-            extracted_text = ""
-
-        # Fallback for plain text or byte decode
-        if not extracted_text.strip():
-            try:
-                extracted_text = file_bytes.decode("utf-8", errors="ignore").strip()
-            except Exception:
-                extracted_text = ""
+            extracted_text = self._ocr_image(img) if img is not None else ""
+            page_details = [{
+                "page_number": 1,
+                "text": extracted_text,
+                "has_text": bool(extracted_text.strip()),
+                "ocr_used": True,
+            }]
 
         # Classify document
         detected_type, confidence = self.classify_document(extracted_text, file_name)
