@@ -1120,8 +1120,8 @@ function renderLogin() {
           <span style="font-size:12px;color:var(--text-tertiary);cursor:pointer;" onclick="setAuthTab('demo')">Quick Demo ⚡</span>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-full" id="btn-login-submit" style="height:50px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;">
-          <span>Access Health Continuum</span>
+        <button type="submit" class="btn btn-primary btn-full" id="btn-login-submit" style="height:50px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;background:#7C3AED;border-color:#7C3AED;color:#FFFFFF;">
+          <span>Sign In to HealthContinuum</span>
           ${getIcon('chevronRight', 'width:18px;height:18px;')}
         </button>
 
@@ -1316,11 +1316,11 @@ async function handleLoginSubmit() {
       await handleAuthSuccess(res.data, remember);
     } else {
       showAuthError(res?.error?.message || res?.message || 'Login failed. Please verify credentials.');
-      setAuthLoading(btn, false, 'Access Health Continuum');
+      setAuthLoading(btn, false, 'Sign In to HealthContinuum');
     }
   } catch (err) {
     showAuthError(err.message || 'Unable to connect to backend server.');
-    setAuthLoading(btn, false, 'Access Health Continuum');
+    setAuthLoading(btn, false, 'Sign In to HealthContinuum');
   }
 }
 
