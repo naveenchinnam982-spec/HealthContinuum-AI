@@ -17,7 +17,7 @@ function getActivePatientId() {
   return CURRENT_PATIENT_ID;
 }
 
-function setActivePatientId(id) {
+function clearActivePatientId() {\n  CURRENT_PATIENT_ID = null;\n  try { localStorage.removeItem('hc_patient_id'); } catch (e) {}\n}\n\nfunction setActivePatientId(id) {
   if (!id) return;
   CURRENT_PATIENT_ID = id;
   if (typeof window !== 'undefined') window.PATIENT_ID = id;
@@ -31,10 +31,13 @@ async function apiFetch(path, options = {}) {
       headers: { 'Content-Type': 'application/json', ...options.headers },
       ...options,
     });
-    const json = await res.json();
-    if (!res.ok) {
-      console.warn(`[API] ${options.method || 'GET'} ${path} → ${res.status}`, json);
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.toLowerCase().includes('application/json')) {
+      const preview = (await res.text()).slice(0, 120);
+      return { success: false, error: { code: 'NON_JSON_RESPONSE', message: `API returned a non-JSON response (HTTP ${res.status}). Check backend deployment and API URL. ${preview.startsWith('<') ? 'The server returned HTML instead of API data.' : ''}` } };
     }
+    const json = await res.json();
+    if (!res.ok) console.warn(`[API] ${options.method || 'GET'} ${path} → ${res.status}`, json);
     return json;
   } catch (err) {
     console.debug(`[API] REST endpoint unreachable: ${path}`);
@@ -43,7 +46,29 @@ async function apiFetch(path, options = {}) {
 }
 
 function isFirebaseActive() {
-  return window.FirebaseConfig && window.FirebaseConfig.isConfigured();
+  return false; // Patient authentication is migrating to Supabase.
+}
+function isSupabaseActive() {
+  return Boolean(window.HC_SUPABASE);
+}
+function mapSupabasePatient(user, profile = {}) {
+  return {
+    id: user.id,
+    name: profile.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Patient',
+    email: user.email || '',
+    phone: profile.phone || user.user_metadata?.phone || user.phone || '',
+    uhid: profile.uhid || '',
+    blood_group: profile.blood_group || '',
+    dob: profile.date_of_birth || '',
+    gender: profile.gender || ''
+  };
+}
+async function getSupabasePatient(user) {
+  let profile = null;
+  const result = await window.HC_SUPABASE.from('patient_profiles').select('*').eq('id', user.id).maybeSingle();
+  if (!result.error) profile = result.data;
+  else console.warn('[Supabase] Patient profile lookup failed:', result.error.message);
+  return mapSupabasePatient(user, profile || {});
 }
 
 // ─── Unified API functions ───────────────────────────────────────────────────
@@ -52,99 +77,50 @@ const API = {
   getActivePatientId,
 
   /** GET /health / Backend status */
-  health: async () => {
-    if (isFirebaseActive()) {
-      return {
-        success: true,
-        data: {
-          status: 'ok',
-          backend: 'firebase',
-          projectId: window.FirebaseConfig.getApp()?.options?.projectId || 'active'
-        },
-        message: 'Firebase backend is connected'
-      };
-    }
-    return apiFetch('/health');
-  },
+  health: async () => ({
+    success: Boolean(isSupabaseActive()),
+    data: { status: isSupabaseActive() ? 'auth-connected' : 'unavailable', backend: 'supabase-auth' },
+    message: isSupabaseActive() ? 'Supabase Auth client initialized; clinical record APIs are separate.' : 'Supabase client unavailable.'
+  }),
 
-  /** POST /auth/login */
+  /** Sign in with Supabase Auth. Email is required for Supabase password sign-in. */
   login: async (identifier, password = '', rememberMe = true) => {
-    const res = await apiFetch('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ identifier, password, remember_me: rememberMe }),
-    });
-    if (res?.success && res.data?.patient?.id) {
-      setActivePatientId(res.data.patient.id);
-      return res;
-    }
-
-    if (isFirebaseActive() && window.FirebaseService && identifier.includes('@')) {
-      try {
-        const userCred = await window.FirebaseService.signIn(identifier, password);
-        const uid = userCred.user?.uid;
-        if (!uid) throw new Error('Firebase did not return a verified user ID');
-        const userPatientId = `pat-${uid}`;
-        setActivePatientId(userPatientId);
-        return {
-          success: true,
-          data: {
-            access_token: await userCred.user.getIdToken(),
-            patient: {
-              id: userPatientId,
-              name: userCred.user?.displayName || identifier.split('@')[0],
-              email: userCred.user?.email || identifier,
-            },
-          },
-          message: 'Signed in successfully via Firebase',
-        };
-      } catch (fbErr) {
-        console.warn('[Firebase sign-in failed]:', fbErr);
-      }
-    }
-
-    return {
-      success: false,
-      error: res?.error || { code: 'AUTHENTICATION_UNAVAILABLE', message: 'Sign-in failed. Check your credentials and connection, then try again.' },
-      message: res?.message || 'Sign-in failed. No demo or local account was created.',
-    };
+    if (!isSupabaseActive()) return { success: false, error: { message: 'Supabase client is unavailable. Refresh the page and try again.' } };
+    const email = String(identifier || '').trim().toLowerCase();
+    if (!email.includes('@')) return { success: false, error: { message: 'Please enter the email address used when creating your account.' } };
+    const { data, error } = await window.HC_SUPABASE.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: { code: error.code || 'AUTH_ERROR', message: error.message } };
+    if (!data.user || !data.session) return { success: false, error: { message: 'No active session returned. Check your email confirmation settings.' } };
+    const patient = await getSupabasePatient(data.user);
+    setActivePatientId(patient.id);
+    return { success: true, data: { access_token: data.session.access_token, patient }, message: 'Signed in with Supabase.' };
   },
 
-  /** POST /auth/register */
-  register: async (name, email = '', phone = '', password = 'password123') => {
-    const res = await apiFetch('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ name, email, phone, password }),
+  /** Register with Supabase Auth. A database trigger creates patient_profiles. */
+  register: async (name, email = '', phone = '', password = '') => {
+    if (!isSupabaseActive()) return { success: false, error: { message: 'Supabase client is unavailable. Refresh the page and try again.' } };
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!normalizedEmail.includes('@')) return { success: false, error: { message: 'Please enter a valid email address.' } };
+    if (String(password).length < 8) return { success: false, error: { message: 'Passcode must contain at least 8 characters.' } };
+    const { data, error } = await window.HC_SUPABASE.auth.signUp({
+      email: normalizedEmail,
+      password,
+      options: { data: { full_name: String(name || '').trim(), phone: String(phone || '').trim() } }
     });
-    if (res?.success && res.data?.patient?.id) {
-      setActivePatientId(res.data.patient.id);
-      return res;
-    }
+    if (error) return { success: false, error: { code: error.code || 'SIGNUP_ERROR', message: error.message } };
+    if (!data.user) return { success: false, error: { message: 'Supabase did not return a user. Please try again.' } };
+    if (!data.session) return { success: false, error: { message: 'Account created. Check your email for the confirmation link, then sign in.' } };
+    const patient = await getSupabasePatient(data.user);
+    setActivePatientId(patient.id);
+    return { success: true, data: { access_token: data.session.access_token, patient }, message: 'Account created with Supabase.' };
+  },
 
-    if (isFirebaseActive() && window.FirebaseService && email) {
-      try {
-        const userCred = await window.FirebaseService.signUp(email, password, name);
-        const uid = userCred.user?.uid;
-        if (!uid) throw new Error('Firebase did not return a verified user ID');
-        const patientId = `pat-${uid}`;
-        setActivePatientId(patientId);
-        return {
-          success: true,
-          data: {
-            access_token: await userCred.user.getIdToken(),
-            patient: { id: patientId, name, email },
-          },
-          message: 'Account created with Firebase',
-        };
-      } catch (e) {
-        console.warn('[Firebase sign-up failed]:', e);
-      }
+  signOut: async () => {
+    if (isSupabaseActive()) {
+      const { error } = await window.HC_SUPABASE.auth.signOut();
+      if (error) console.warn('[Supabase] Sign-out failed:', error.message);
     }
-
-    return {
-      success: false,
-      error: res?.error || { code: 'REGISTRATION_UNAVAILABLE', message: 'Registration failed. Check your connection and try again.' },
-      message: res?.message || 'Registration failed. No local-only account was created.',
-    };
+    clearActivePatientId();
   },
 
   /** POST /auth/google */
@@ -466,4 +442,4 @@ window.API = API;
 window.PATIENT_ID = CURRENT_PATIENT_ID;
 window.checkBackend = checkBackend;
 window.isBackendAvailable = () => backendAvailable;
-window.isFirebaseActive = isFirebaseActive;
+window.isFirebaseActive = isFirebaseActive;\nwindow.isSupabaseActive = isSupabaseActive;
