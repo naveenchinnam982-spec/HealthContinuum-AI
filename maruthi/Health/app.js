@@ -2319,6 +2319,8 @@ function clearCompanionChat() {
 // ─── CONVERSATIONAL ENGINE: MESSAGE HANDLING & API INTEGRATION ───────────────
 async function handleSendCompanionMessage(questionText) {
   if (!questionText || !questionText.trim()) return;
+  // Prevent rapid double-taps / duplicate speech events from issuing two requests.
+  if (STATE.voiceCompanion.state === 'processing') return;
 
   const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
