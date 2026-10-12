@@ -1194,7 +1194,7 @@ def is_simple_greeting(query: str) -> bool:
     normalized = re.sub(r"[^a-zA-Z\u0C00-\u0C7F ]", " ", query.lower()).strip()
     normalized = re.sub(r"\s+", " ", normalized)
     return bool(re.fullmatch(
-        r"(hi|hello|hey|hii+|helo+|good morning|good afternoon|good evening|how are you|what s up|namaste|నమస్కారం|హాయ్|హలో)( assistant| ai)?",
+        r"((hi|hello|hey|hii+|helo+)( (hi|hello|hey|hii+|helo+)){0,2}|good morning|good afternoon|good evening|how are you|what s up|namaste|నమస్కారం|హాయ్|హలో)( assistant| ai)?",
         normalized,
     ))
 
