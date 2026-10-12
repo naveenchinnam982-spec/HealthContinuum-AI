@@ -17,7 +17,12 @@ function getActivePatientId() {
   return CURRENT_PATIENT_ID;
 }
 
-function clearActivePatientId() {\n  CURRENT_PATIENT_ID = null;\n  try { localStorage.removeItem('hc_patient_id'); } catch (e) {}\n}\n\nfunction setActivePatientId(id) {
+function clearActivePatientId() {
+  CURRENT_PATIENT_ID = null;
+  try { localStorage.removeItem('hc_patient_id'); } catch (e) {}
+}
+
+function setActivePatientId(id) {
   if (!id) return;
   CURRENT_PATIENT_ID = id;
   if (typeof window !== 'undefined') window.PATIENT_ID = id;
