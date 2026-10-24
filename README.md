@@ -313,6 +313,29 @@ This project is intended for hackathon demonstration and clinical continuity res
 
 The Netlify site is a static frontend; it cannot run the FastAPI/Python OCR service by itself. The backend must be deployed separately.
 
+### Chat AI / OpenRouter configuration
+
+The patient frontend and FastAPI backend are separate services. The Netlify build uses
+`HC_API_BASE_URL` when set; if it is unset, the build defaults to
+`https://healthcontinuum-api.onrender.com`. The value is the backend origin, without
+`/api` (the frontend adds that path automatically). If your backend hostname changes,
+set `HC_API_BASE_URL` in Netlify and redeploy the site.
+
+OpenRouter requests run on the backend, not in browser JavaScript. In the Render
+`healthcontinuum-api` service, add `OPENROUTER_API_KEY` as a **secret environment
+variable**. Never commit the key or place it in a Netlify frontend variable. The
+Render Blueprint declares this secret as manually configured (`sync: false`), so
+configure it in Render before expecting model-generated replies. The backend also
+supports `OPENROUTER_RECORD_MODEL` and `OPENROUTER_HEALTH_MODEL` overrides; the
+repository defaults are retained unless you explicitly set them.
+
+If OpenRouter is missing or returns an error, the backend keeps its safe deterministic
+answer, logs the failure type / HTTP status, and marks the response metadata as a
+grounded fallback. Check the Render application logs for OpenRouter errors. Free model
+availability and rate limits can vary, so an API key alone does not guarantee every
+request will succeed. Do not use this demo with real patient data: free model providers
+may have their own data-handling terms.
+
 1. In Render, choose **New → Blueprint**, connect this repository, and let Render read `render.yaml`. The service installs Tesseract and the Python PDF/image/OCR dependencies from the backend Dockerfile.
 2. Wait for the Render service to finish deploying. Verify that `https://YOUR-RENDER-SERVICE.onrender.com/api/health` returns JSON with `"success": true`.
 3. In Netlify, open **Site configuration → Environment variables** and add `HC_API_BASE_URL` with the Render service origin only, for example `https://YOUR-RENDER-SERVICE.onrender.com` (do not add `/api` unless you prefer; the frontend normalizes either form).

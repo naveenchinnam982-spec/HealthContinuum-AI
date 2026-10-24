@@ -176,6 +176,7 @@ def check_emergency_safety(query: str, language: str) -> dict[str, Any] | None:
                 )
             return {
                 "answer": answer,
+                "language": language,
                 "intent": INTENT_POTENTIAL_EMERGENCY,
                 "safety_status": "EMERGENCY_ESCALATION",
                 "citations": [],
@@ -215,6 +216,7 @@ def check_unreadable_prescription_safety(query: str, language: str) -> dict[str,
                 )
             return {
                 "answer": answer,
+                "language": language,
                 "intent": INTENT_UNREADABLE_PRESCRIPTION,
                 "safety_status": "UNREADABLE_PRESCRIPTION",
                 "citations": [
@@ -1241,6 +1243,10 @@ async def generate_openrouter_response(
 ) -> str | None:
     """Generate a conversational answer using OpenRouter; keep secrets server-side."""
     if not OPENROUTER_API_KEY:
+        logger.error(
+            "OPENROUTER_API_KEY is missing from the backend environment; "
+            "configure it in the Render service, not in Netlify."
+        )
         return None
     is_record_question = intent in {
         INTENT_HISTORICAL_COMPARISON, INTENT_VISIT_EVENT_QUERY,
@@ -1303,7 +1309,19 @@ Do not repeat the supplied draft verbatim unless it is the clearest safe answer.
                 return content.strip()
             logger.warning("OpenRouter returned an empty chat completion.")
     except Exception as exc:
-        logger.warning("OpenRouter request failed (%s). Using grounded fallback.", type(exc).__name__)
+        status_code = getattr(getattr(exc, "response", None), "status_code", None)
+        if status_code is not None:
+            logger.warning(
+                "OpenRouter returned HTTP %s for model %s; using grounded fallback.",
+                status_code,
+                model,
+            )
+        else:
+            logger.warning(
+                "OpenRouter request failed (%s) for model %s; using grounded fallback.",
+                type(exc).__name__,
+                model,
+            )
     return None
 
 
@@ -1528,6 +1546,15 @@ async def generate_companion_chat(
             resp_data["answer"] = openrouter_text
             resp_data["provider"] = "openrouter_grounded"
             resp_data["provider_note"] = "OpenRouter response grounded against patient-scoped records; deterministic safety and citation pipeline remains authoritative."
+        else:
+            # Keep the safe deterministic answer, but make the unavailable model visible
+            # to API clients instead of implying that the LLM generated the response.
+            prior_note = str(resp_data.get("provider_note") or "").strip()
+            fallback_note = (
+                "OpenRouter was unavailable; this is a deterministic grounded fallback. "
+                "Check OPENROUTER_API_KEY on Render and the configured model IDs."
+            )
+            resp_data["provider_note"] = f"{prior_note} {fallback_note}".strip()
 
     # 8. Persist conversation turn
     conv_id, msg_id = await persist_chat_turn(
