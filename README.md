@@ -324,7 +324,7 @@ set `HC_API_BASE_URL` in Netlify and redeploy the site.
 OpenRouter requests run on the backend, not in browser JavaScript. In the Render
 `healthcontinuum-api` service, add `OPENROUTER_API_KEY` as a **secret environment
 variable**. Never commit the key or place it in a Netlify frontend variable. The
-Render Blueprint declares this secret as manually configured (`sync: false), so
+Render Blueprint declares this secret as manually configured (`sync: false`), so
 configure it in Render before expecting model-generated replies. The backend also
 supports `OPENROUTER_RECORD_MODEL` and `OPENROUTER_HEALTH_MODEL` overrides; the
 repository defaults are retained unless you explicitly set them.
