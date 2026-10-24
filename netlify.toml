@@ -4,7 +4,7 @@
 # The external doctorsdashboard-main folder is not referenced or modified.
 [build]
   base = "."
-  command = "set -e; rm -rf dist; mkdir -p dist/patient; cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/; cp -R maruthi/Health/assets dist/patient/; echo \"window.HC_API_BASE_URL = '$HC_API_BASE_URL';\" > dist/patient/api-config.js"
+  command = "set -e; rm -rf dist; mkdir -p dist/patient; cp maruthi/Health/index.html maruthi/Health/styles.css maruthi/Health/firebase-config.js maruthi/Health/firebase-service.js maruthi/Health/supabase-config.js maruthi/Health/api.js maruthi/Health/app.js dist/patient/; cp -R maruthi/Health/assets dist/patient/; echo \"window.HC_API_BASE_URL = '${HC_API_BASE_URL:-https://healthcontinuum-api.onrender.com}';\" > dist/patient/api-config.js"
   publish = "dist"
 
 [[redirects]]
