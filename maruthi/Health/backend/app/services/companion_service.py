@@ -176,6 +176,7 @@ def check_emergency_safety(query: str, language: str) -> dict[str, Any] | None:
                 )
             return {
                 "answer": answer,
+                "language": language,
                 "intent": INTENT_POTENTIAL_EMERGENCY,
                 "safety_status": "EMERGENCY_ESCALATION",
                 "citations": [],
@@ -215,6 +216,7 @@ def check_unreadable_prescription_safety(query: str, language: str) -> dict[str,
                 )
             return {
                 "answer": answer,
+                "language": language,
                 "intent": INTENT_UNREADABLE_PRESCRIPTION,
                 "safety_status": "UNREADABLE_PRESCRIPTION",
                 "citations": [
