@@ -11,6 +11,9 @@ services:
         value: production
       - key: DEBUG
         value: "false"
+      # OpenRouter runs on the backend; never put this secret in the static Netlify frontend.
+      - key: OPENROUTER_API_KEY
+        sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: ALLOWED_ORIGINS
